@@ -1,0 +1,13 @@
+# Project place file
+/Mycelia.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+sourcemap.json
+
+# Legacy Pre-Alpha source. All ported into the new top-level src/ during
+# the project restructure. Kept on disk as reference for anyone tracing
+# the port; not version-controlled.
+/mycelia/
