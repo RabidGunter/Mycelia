@@ -2,7 +2,7 @@
 
 GSD project memory. Updated by orchestrator agents after every non-trivial unit of work. Mirrors authoritative state from [HANDOFF.md](../HANDOFF.md) for the GSD layer; HANDOFF.md remains the canonical session log for code state.
 
-**Last updated:** 2026-05-03 (initial state from `new-project-from-ingest` synthesis)
+**Last updated:** 2026-05-04 (Player Stalls feature shipped; 5 implementation waves committed)
 
 ---
 
@@ -11,7 +11,7 @@ GSD project memory. Updated by orchestrator agents after every non-trivial unit 
 - **Name:** Mycelia (working title)
 - **Type:** Roblox cozy life-sim game (Luau / `.luau`)
 - **Core value:** Cozy mushroom-cultivation game where the 5-min first-hour loop unfolds into a 200-hour optimization puzzle, a player-driven trading economy, and a collection ceiling that grows with the game. ([docs/DESIGN.md](../docs/DESIGN.md))
-- **Current focus:** Phase 2 Closed Beta in progress. **Next pickup: Player Stalls implementation** per the approved spec at [docs/specs/player-stalls.md](../docs/specs/player-stalls.md).
+- **Current focus:** Phase 2 Closed Beta in progress. **Player Stalls shipped 2026-05-04** (5 waves: Exchange/RateLimit foundation → Stall pure helpers → Stall Roblox-bound + drain → world+dialogue → client UI). **Next pickup: Co-op Foraging Expeditions** (P2-EXP-01..05) per [docs/ROADMAP.md](../docs/ROADMAP.md) Phase 2 §92-97 — largest remaining Phase 2 system. Adjacent quick wins: 3 remaining secondary merchants (Spirit Food / Cosmetic / Decoration vendors), 3 remaining launch NPCs (Spirit Speaker / Expedition Coordinator / Trading Post Manager — each blocked on the backing system shipping first).
 - **Repo root:** `c:\Users\fonte\Documents\Mycelia\`
 - **Canonical Rojo source:** `src/` (per `default.project.json`); legacy `mycelia/src/` is archive-only.
 
@@ -20,16 +20,16 @@ GSD project memory. Updated by orchestrator agents after every non-trivial unit 
 ## Current Position
 
 - **Phase:** 2 — Closed Beta (social systems + content) — *In progress*
-- **Plan:** None active. Next plan to author: **Player Stalls** (P2-STALL-01..06).
-- **Status:** Phase 1 complete; Phase 2 mid-flight with 6 milestones shipped 2026-05-02 / 2026-05-03 (Shop UI · Substrate Dealer + Spore Merchant · Dialogue system · Quest system + tutorial · 5-of-8 launch NPCs · Trading Post backend + UI + audit log).
-- **Tests:** ~253 passing (166 Phase 1 baseline + ~30 ShopSpec + ~10 expanded ShopSpec + ~11 DialoguesSpec + ~16 QuestsSpec + ~20 TradeSpec). Studio verification pending for the most recent additions per HANDOFF.md.
+- **Plan:** Player Stalls plan set (`02-01-PLAN.md` … `02-04-PLAN.md` + `02-02a-PLAN.md` + `02-02b-PLAN.md`) is **EXECUTED** as of 2026-05-04. All 6 P2-STALL requirements (P2-STALL-01..06) closed. Next planning round when starting Co-op Expeditions.
+- **Status:** Phase 1 complete; Phase 2 mid-flight with 8 milestones shipped (Shop UI · Substrate Dealer + Spore Merchant · Dialogue system · Quest system + tutorial · 5-of-8 launch NPCs · walk-away dialogue UX · Trading Post · **Player Stalls**).
+- **Tests:** **316 passing**, 0 failed (was 253 before Player Stalls; +63 from ExchangeSpec / RateLimitSpec / StallSpec / PlotAnchorsSpec / PendingMutationsSpec / DialoguesSpec extension + 1 ShopSpec math fix). User-verified in Studio across 5 separate Play sessions during Wave-by-wave execution.
 
 ### Phase progress bar
 
 ```
 Pre-Alpha:    [██████████] complete (baseline)
 Phase 1:      [██████████] complete 2026-05-02 (166 tests verified)
-Phase 2:      [████░░░░░░] in progress (6 of ~12 sub-feature groups shipped or partial)
+Phase 2:      [██████░░░░] in progress (8 of ~12 sub-feature groups shipped; Player Stalls done 2026-05-04)
 Phase 3:      [░░░░░░░░░░] not started
 Phase 4:      [░░░░░░░░░░] not started
 After launch: [░░░░░░░░░░] not started

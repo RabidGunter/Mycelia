@@ -84,10 +84,10 @@ This roadmap **pairs with the Scripting Order Request PDF** — the PDF is the d
 - [~] **(M) Trading Post location** — placeholder wood marker Part at (25, _, 0) with surface text. Real zone (with travel portals from all biomes) is a follow-up; trade currently works from anywhere via the HUD "Trade" button.
 
 ### Player Stalls
-- [ ] **(L) Stall rental flow.** Stall Manager NPC, daily fee, stall Model assigned to player.
-- [ ] **(L) Listing UI** — fixed-price + auction with min bid + duration toggle.
-- [ ] **(M) Browse + buy flow** — other players approach a stall, see listings, buy with prompt.
-- [ ] **(M) Stall renewal/release loop** — daily auto-renew if owner has fee; otherwise listings return to inventory.
+- [x] **(L) Stall rental flow.** ✓ 2026-05-04 — Stall Manager NPC at (25, 2.5, 8) with `Dialogues.StallManager` tree (3 nodes incl. coin-affordability branch). 12 anchored featured stalls south of the Trading Post marker. Featured rental via `Stall.requestRentFeatured` (200 coin/day, FIFO slot allocation, server-memory `featuredRowState`). 64-tile plot anchor grid in the Cottages zone west of spawn at (-300, 0, 0).
+- [x] **(L) Listing UI** — ✓ 2026-05-04 — fixed-price only in v1 (auctions deferred per [docs/specs/player-stalls.md](specs/player-stalls.md) §247). `StallUI.client.luau` Owner UI Listings tab (4-slot grid + item picker submodal). Auctions are a Phase 2 fast-follow: schema is ready, just add `kind = "auction"` + `bids` + bid escrow.
+- [x] **(M) Browse + buy flow** — ✓ 2026-05-04 — Buyer UI opens via stall-stand ProximityPrompt; Plot Directory UI (HUD "🛒 Marketplace" button) lists featured-row sellers + Recent Sales tab; "Visit Stall" CFrame teleport per ADR 001.
+- [x] **(M) Stall renewal/release loop** — ✓ 2026-05-04 — listing 48h expiry sweeper (60s tick, online players); offline self-sweep on next login via `Stall.selfSweepOnLoad`. Items return to seller's mailbox (D-20 silent fallback when at 100-id cap). Featured rental 24h expiry frees the slot via `setFeaturedStandOccupant(slot, nil)`. `data.stalls` schema additive to v3 (no migration). D-19 pending-mutations queue at `MyceliaStallPendingMutations_v1` enables async sales from offline sellers (drained on next login BEFORE other startup hooks).
 
 ### Co-op Foraging Expeditions
 - [ ] **(L) Lobby system.** Coordinator NPC, Create/Join tabs, lobby UI with kick + password + level requirement.

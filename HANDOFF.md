@@ -4,18 +4,23 @@ Current state of the project. The orientation doc CLAUDE.md points here first; r
 
 ---
 
-## State as of last session (2026-05-03)
+## State as of last session (2026-05-04)
 
-**Phase 2 Closed Beta in progress.** Six milestones shipped:
+**Phase 2 Closed Beta in progress.** Eight milestones shipped:
 - 2026-05-02: Shop UI replacing Pre-Alpha witch auto-sell.
 - 2026-05-03: Substrate Dealer + Spore Merchant (secondary merchants partial).
 - 2026-05-03: NPC dialogue system foundation + Forest Witch tree.
 - 2026-05-03: Quest system + 5-quest tutorial sequence + Gardener Coach NPC.
 - 2026-05-03: Travel Coordinator + Old Hermit + Wandering Alchemist NPCs (5 of 8 launch NPCs).
 - 2026-05-03: Walk-away dialogue auto-close UX.
-- 2026-05-03: **Trading Post — atomic two-player trade backend + UI + audit log.**
+- 2026-05-03: Trading Post — atomic two-player trade backend + UI + audit log.
+- 2026-05-04: **Player Stalls — async storefront economy (5 implementation waves; user verified in Studio).**
 
-Player Stalls + Co-op Expeditions + 15+ new species pending. Phase 1 verified complete in Studio (166 tests passing prior to Phase 2 work).
+Co-op Expeditions + 15+ new species + 3 remaining launch NPCs (Spirit Speaker, Expedition Coordinator, Trading Post Manager) pending.
+
+**Test count:** 316 passed, 0 failed (was 253 before Player Stalls; +63 across ExchangeSpec + RateLimitSpec + StallSpec + PlotAnchorsSpec + PendingMutationsSpec + DialoguesSpec extension + 1 ShopSpec math fix).
+
+**GSD `.planning/` scaffolding** (PROJECT.md / REQUIREMENTS.md / ROADMAP.md / STATE.md / intel + the 6 Player Stalls plans) was bootstrapped from the existing `docs/` content via `gsd-ingest-docs` at the start of this session. Both doc trees coexist; `docs/` is canonical for design intent (specs, ADRs), `.planning/` is the GSD layer for plan/execute tracking.
 
 ---
 
@@ -94,6 +99,45 @@ Full Phase 1 task list with size markers: `docs/ROADMAP.md`.
 ---
 
 ## Recent session log
+
+### 2026-05-04 — Phase 2 Player Stalls (async storefront economy)
+
+Five-wave implementation of the Player Stalls feature per the spec at [docs/specs/player-stalls.md](docs/specs/player-stalls.md) and the 6-PLAN decomposition at `.planning/phases/02-closed-beta-social-systems-content/`. Locked design via 5 brainstorming questions: hybrid placement (personal plot + featured row), async sales via mailbox, fixed-price-only v1, 4-slot stalls / 48h expiry / 12 featured / 200 coin/day, discovery gated to featured row.
+
+- **Wave 1 (`535bbef`):** `Exchange.luau` extracted from Trade.luau (snapshotData / restoreFromSnapshot / applyOneSided / buildAuditEntry / writeAudit pure helpers). New `RateLimit.luau` primitive. `Trade.luau` refactored to consume Exchange (zero behavior change). `Constants.STALL` block (all D-06..D-21 tunables) + `Constants.MERCHANTS.StallManager` + 10 new REMOTES. `data.stalls` additive default in PlayerData.luau (defaultData + idempotent migrate backfill). +13 tests (ExchangeSpec + RateLimitSpec). Studio: 267 passed.
+- **Wave 2a (`2102a38`):** Pure helpers landed: `Stall.luau` (12 exports + AUDIT_KINDS taxonomy), `PlotAnchors.luau` (assign/tileIdToPosition/isAssigned), `PendingMutations.luau` (D-19 offline-seller queue: write/peek/drain/_reset). +41 tests. Studio: 308 passed.
+- **Wave 2b (`c2a03e0`):** Roblox-bound side: `Stall.start()` + 6 remote handlers (CreateListing/CancelListing/BuyListing/RentFeaturedSlot/ClaimMailbox/BrowseDirectory) + ProximityPrompt routing + 60s sweeper task + `Stall.applyToSeller` (online via PlayerData.update; offline via PendingMutations.write) + `Stall.requestRentFeatured` (B-6 lock — public function shared between remote handler and dialogue). PlayerData.onPlayerAdded got the PendingMutations.drain hook + Stall.selfSweepOnLoad. init.server.luau wires `Stall.start()`. Studio: 308 passed (no test changes; Roblox-bound code verified live).
+- **Wave 3a (`46868e1`):** World + dialogue. `Dialogues.StallManager` tree (3 nodes: greeting + rent_confirm + lore_intro + rent_too_poor for the can't-afford branch). `Dialogue.luau` ACTION_HANDLERS extended with `openStallOwnerUI` + `rentFeaturedSlot`. MapSetup additions: `buildStallManager()`, `buildFeaturedRowStalls()` (12 stands), `buildPlotAnchorGrid()` (8×8 = 64 tiles in Cottages zone west of spawn at -300,0,0). DialoguesSpec extension (+8 tests for the StallManager tree). **Bonus fixes bundled:** Shop talk-range bug for dialogue-mediated witch (`findMerchantAnchor` now accepts either `merchantId` OR `dialogueId` attribute — pre-existing since 2026-05-03 dialogue migration), Shop sell toast invisible bug (toast was parented to the modal ScreenGui that closeShop disabled — now uses an independent always-on toast ScreenGui at DisplayOrder 13), empty-stall prompt gating (featured stalls start with `prompt.Enabled = false`; `Stall.requestRentFeatured` enables it via new `setFeaturedStandOccupant` helper), coin-affordability dialogue branch (`hasFeaturedFee` / `lacksFeaturedFee` condition closures + `rent_too_poor` node give the user clear feedback when they can't afford the 200-coin fee). Studio: 316 passed.
+- **Wave 3b (`2a89e5c`):** `StallUI.client.luau` (1136 lines) — three modes share a single modal: Owner UI (3 tabs Listings/Mailbox/Featured + item picker submodal), Buyer UI (listings list + Buy buttons), Plot Directory UI (HUD "🛒 Marketplace" button → 2 tabs Featured + Recent Sales). `STALL_ERROR_MESSAGES` table maps 13 codes (12 from D-15 minus deprecated MAILBOX_FULL per D-20, plus RATE_LIMITED + MUTATION_FAILED) to player-friendly toast strings. Mailbox `overflowNotice` toast (D-20). Live data refresh via `PlayerDataUpdated` (skipped for itemPicker mode to preserve typed qty/price). Visit Stall via CFrame teleport per ADR 001 (NOT TeleportService). All visual tokens read from `Constants.UI`. **One bug fix during testing:** picker `pickedItem` / `pickedQty` / `pickedPrice` were function-locals that got reset on every row-click rebuild → user couldn't actually list anything. Lifted to module-scope (`pickerItem`/`pickerQty`/`pickerPrice`) with `FocusLost` wiring on the qty/price boxes. Auto-navigates back to Listings tab after a successful create. No new server tests (client UI verified live).
+
+**Architecture decisions locked during planning** (CONTEXT.md D-01..D-21):
+- D-19: offline-seller mutation strategy = pending-mutations queue at `MyceliaStallPendingMutations_v1`. Buyer purchases from offline seller → server writes mutation record to queue. Seller's next login → `PlayerData.onPlayerAdded` calls `PendingMutations.drain` BEFORE any other startup hook → mutations apply atomically.
+- D-20: MAILBOX_FULL is silent fallback per spec §141 prose, not an error. Cancel/expire of a listing whose items would overflow the 100-id mailbox cap returns `(true, "OK", overflowItems)`. Items go to audit log via `kind = "mailbox_overflow"` entry; player gets a one-time toast on next data update.
+- D-21: full per-remote rate-limit table — `CreateListing` 1/3s, `BuyListing` 1/1s, `CancelListing` 1/3s, `RentFeaturedSlot` 1/60s, `ClaimMailbox` 1/10s, `BrowseDirectory` 1/2s.
+
+**v1 simplifications documented in code:**
+- Featured directory shows ONLY online sellers. Offline sellers' featured slots stay in `data.stalls.featuredRentExpiresAt` until 24h expiry but don't appear in BrowseDirectory.
+- `BuyListing` only works on online sellers. PendingMutations queue is wired for the rare race case (seller goes offline mid-transaction).
+- `Stall.featuredRowState` is server-memory only — lost on server restart. Slot rentals lose their slot association if the server restarts mid-rental, but the seller's `data.stalls.featuredRentExpiresAt` persists (re-rent after restart picks an available slot).
+- Sweeper iterates ONLY online players. Offline sellers self-sweep on next login via `Stall.selfSweepOnLoad` in PlayerData.onPlayerAdded.
+
+**Verified working in Studio (user-confirmed during this session):**
+- 316 tests passing.
+- Selling mushrooms to the witch via the dialogue → Shop UI flow → green "+N coins" toast on success.
+- Stall Manager NPC at (25, 2.5, 8) opens dialogue with 5 response branches.
+- Renting a featured slot via the dialogue (with 200 coins): coin debit, `featuredRentExpiresAt` set, the corresponding featured stall stand's `stallSellerUserId` attribute populated, prompt enabled.
+- Owner UI Listings tab: 4-slot grid; can add a listing via the picker submodal; listing appears in the slot grid with item/qty/price/time-remaining; cancel button works.
+- The "I don't have 200 coins yet" branch shows when the player can't afford featured.
+
+**Known follow-ups / not in this pass:**
+- Trading Post zone gate (still works from anywhere via the HUD Trade button).
+- Per-remote rate limit hardening for the Trade remotes (Stalls have D-21; Trade still relies on the existing 20s cooldown only).
+- Real character models for Stall Manager + featured stall artwork (placeholder Parts).
+- Plot anchor visual polish (placeholder green tiles; real Cottages-zone art ships when assets ship).
+- Mailbox notification toast on next login (the overflowNotice toast is in place; a "you have N coins waiting" toast on join is a separate polish item).
+- Plot Directory pagination (only matters if featured row > 12).
+- Recent Sales tab is local-only (each player sees only what they observed during the session); a server-authoritative recent-feed would need a small DataStore sync.
+- 3 remaining launch NPCs (Spirit Speaker, Expedition Coordinator, Trading Post Manager) — each is mechanical once their backing system ships.
 
 ### 2026-05-03 — Phase 2 Trading Post (atomic two-player trade)
 - New spec [docs/specs/trading-post.md](docs/specs/trading-post.md) — locks in three architectural decisions: in-memory active sessions (DataStore for audit log only), no Trading Post zone gate yet (placeholder Part at spawn), Adopt Me lock+countdown+confirm anti-scam UX.
