@@ -57,6 +57,14 @@ local function activeIncomplete(questId)
 	end
 end
 
+-- Featured-stall affordability gate (Phase 2 Player Stalls).
+local function hasFeaturedFee(data)
+	return type(data) == "table" and (data.coins or 0) >= Constants.STALL.featuredFee
+end
+local function lacksFeaturedFee(data)
+	return not hasFeaturedFee(data)
+end
+
 -- ---------- Forest Witch -------------------------------------------------
 -- The Phase 2 proof-of-concept. Replaces the direct "press E to sell"
 -- prompt with a tiny tree that adds a sliver of character without slowing
@@ -292,6 +300,58 @@ Dialogues.WanderingAlchemist = {
 			responses = {
 				{ id = "back",  text = "I'll keep trying.",             next = "greeting" },
 				{ id = "leave", text = "Goodbye.",                      action = { kind = "endDialogue" } },
+			},
+		},
+	},
+}
+
+-- ---------- Stall Manager (Phase 2 — Player Stalls D-17) ----------------
+-- Lives at the head of the featured row in the Trading Post zone.
+-- Three response branches per spec §188-194: manage stall, rent featured
+-- slot (with confirmation subnode), open mailbox. Plus standard lore +
+-- endDialogue paths.
+
+Dialogues.StallManager = {
+	rootNodeId  = "greeting",
+	speakerName = "Stall Manager",
+	portrait    = "rbxassetid://0",
+	nodes = {
+		greeting = {
+			text = "Welcome to the market. I run the featured row and forward your sale earnings. What can I do for you?",
+			responses = {
+				{ id = "manage",  text = "Manage my stall.",            action = { kind = "openStallOwnerUI", tab = "listings" } },
+				{ id = "rent",    text = "Rent a featured slot.",       next = "rent_confirm" },
+				{ id = "mailbox", text = "Open my mailbox.",            action = { kind = "openStallOwnerUI", tab = "mailbox" } },
+				{ id = "lore",    text = "Tell me about the market.",   next = "lore_intro" },
+				{ id = "leave",   text = "Goodbye.",                    action = { kind = "endDialogue" } },
+			},
+		},
+
+		rent_confirm = {
+			text = "A featured slot costs 200 coins for 24 hours. Your stall appears in the central row and the marketplace directory. Want it?",
+			responses = {
+				-- Affordable path
+				{ id = "yes",         text = "Yes, rent it.",                action = { kind = "rentFeaturedSlot" }, condition = hasFeaturedFee },
+				-- Can't-afford path: visible only when player lacks the 200 coins
+				{ id = "cant_afford", text = "I don't have 200 coins yet.",  next = "rent_too_poor",                  condition = lacksFeaturedFee },
+				-- Always-available back-out
+				{ id = "back",        text = "Maybe later.",                 next = "greeting" },
+			},
+		},
+
+		rent_too_poor = {
+			text = "Come back when you've earned 200 coins. Selling mushrooms to the Forest Witch is the easiest way to build up the fee.",
+			responses = {
+				{ id = "back",  text = "Got it.",        next = "greeting" },
+				{ id = "leave", text = "Goodbye.",       action = { kind = "endDialogue" } },
+			},
+		},
+
+		lore_intro = {
+			text = "The market here is mostly word-of-mouth. Walk to a player's plot and you'll see their stall. Featured sellers also show up in the Marketplace tab from anywhere.",
+			responses = {
+				{ id = "back",  text = "Got it.",                         next = "greeting" },
+				{ id = "leave", text = "Thanks. I'll be on my way.",      action = { kind = "endDialogue" } },
 			},
 		},
 	},

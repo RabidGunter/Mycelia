@@ -435,11 +435,38 @@ end
 
 -- ---------- Featured row helpers (server-memory) --------------------------
 
--- Sweep expired entries from featuredRowState.occupiedSlots.
+-- Find the Workspace stall stand Part for a given slot index. Returns nil
+-- if not built yet (Studio Play before MapSetup runs, or hand-built world
+-- without the standard naming).
+local function findFeaturedStandByIndex(slotIndex: number): BasePart?
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant:GetAttribute("featuredSlotIndex") == slotIndex then
+			return descendant
+		end
+	end
+	return nil
+end
+
+-- Mirror in-memory featuredRowState onto the Workspace Part: set/clear the
+-- stallSellerUserId attribute + enable/disable the StallPrompt accordingly.
+-- Called on rent (userId set) and expiry (userId nil).
+local function setFeaturedStandOccupant(slotIndex: number, userId: number?)
+	local stand = findFeaturedStandByIndex(slotIndex)
+	if not stand then return end
+	stand:SetAttribute("stallSellerUserId", userId)  -- nil clears the attribute
+	local prompt = stand:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.Enabled = userId ~= nil
+	end
+end
+
+-- Sweep expired entries from featuredRowState.occupiedSlots + clear the
+-- corresponding Workspace stand's attribute + disable its prompt.
 local function sweepFeaturedRow(now: number)
 	for slotIndex, entry in pairs(Stall.featuredRowState.occupiedSlots) do
 		if entry.expiresAt and now > entry.expiresAt then
 			Stall.featuredRowState.occupiedSlots[slotIndex] = nil
+			setFeaturedStandOccupant(slotIndex, nil)
 		end
 	end
 end
@@ -479,11 +506,13 @@ function Stall.requestRentFeatured(player: Player): (boolean, string)
 		d.stalls.featuredRentExpiresAt = expiresAt
 	end)
 
-	-- Claim slot in server-memory featuredRowState
+	-- Claim slot in server-memory featuredRowState + mirror to the Workspace Part
+	-- (sets stallSellerUserId attribute + enables StallPrompt so buyers can interact).
 	Stall.featuredRowState.occupiedSlots[slotIndex] = {
 		userId    = player.UserId,
 		expiresAt = expiresAt,
 	}
+	setFeaturedStandOccupant(slotIndex, player.UserId)
 
 	audit("stall_featured_rented", {
 		sellerUserId = player.UserId,

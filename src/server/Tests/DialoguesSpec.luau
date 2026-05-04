@@ -23,6 +23,9 @@ local KNOWN_ACTION_KINDS = {
 	startQuest = true,
 	turnInQuest = true,
 	requestBiomeTravel = true,
+	-- Player Stalls (Phase 2 Wave 3a)
+	openStallOwnerUI = true,
+	rentFeaturedSlot = true,
 }
 
 return function()
@@ -164,6 +167,95 @@ return function()
 		end)
 		TestKit.test("canExecuteAction is false for fabricated tuples", function()
 			TestKit.eq(Dialogue.canExecuteAction("NotAnNPC", "x", "y"), false)
+		end)
+	end)
+
+	TestKit.describe("Dialogues.StallManager (Phase 2 Wave 3a)", function()
+		TestKit.test("tree exists with rootNodeId 'greeting'", function()
+			TestKit.truthy(Dialogues.StallManager ~= nil)
+			TestKit.eq(Dialogues.StallManager.rootNodeId, "greeting")
+		end)
+
+		TestKit.test("greeting node has the 5 expected branches", function()
+			local greeting = Dialogues.StallManager.nodes.greeting
+			TestKit.eq(#greeting.responses, 5)
+			local ids = {}
+			for _, r in ipairs(greeting.responses) do ids[r.id] = true end
+			TestKit.truthy(ids.manage)
+			TestKit.truthy(ids.rent)
+			TestKit.truthy(ids.mailbox)
+			TestKit.truthy(ids.lore)
+			TestKit.truthy(ids.leave)
+		end)
+
+		TestKit.test("manage + mailbox responses use openStallOwnerUI with proper tab payload", function()
+			local greeting = Dialogues.StallManager.nodes.greeting
+			for _, r in ipairs(greeting.responses) do
+				if r.id == "manage" then
+					TestKit.eq(r.action.kind, "openStallOwnerUI")
+					TestKit.eq(r.action.tab, "listings")
+				elseif r.id == "mailbox" then
+					TestKit.eq(r.action.kind, "openStallOwnerUI")
+					TestKit.eq(r.action.tab, "mailbox")
+				end
+			end
+		end)
+
+		TestKit.test("rent response navigates to rent_confirm subnode (not direct action)", function()
+			local greeting = Dialogues.StallManager.nodes.greeting
+			for _, r in ipairs(greeting.responses) do
+				if r.id == "rent" then
+					TestKit.eq(r.next, "rent_confirm")
+					TestKit.eq(r.action, nil)
+				end
+			end
+			TestKit.truthy(Dialogues.StallManager.nodes.rent_confirm ~= nil)
+		end)
+
+		TestKit.test("rent_confirm 'yes' fires rentFeaturedSlot action", function()
+			local rentNode = Dialogues.StallManager.nodes.rent_confirm
+			local foundYes = false
+			for _, r in ipairs(rentNode.responses) do
+				if r.id == "yes" then
+					foundYes = true
+					TestKit.eq(r.action.kind, "rentFeaturedSlot")
+				end
+			end
+			TestKit.truthy(foundYes)
+		end)
+
+		TestKit.test("lore_intro is reachable from greeting + has back/leave responses", function()
+			local lore = Dialogues.StallManager.nodes.lore_intro
+			TestKit.truthy(lore ~= nil)
+			TestKit.truthy(#lore.responses >= 2)
+		end)
+
+		TestKit.test("rent_confirm has affordability-conditional responses (yes vs cant_afford)", function()
+			local rent = Dialogues.StallManager.nodes.rent_confirm
+			local foundYes, foundCantAfford = false, false
+			for _, r in ipairs(rent.responses) do
+				if r.id == "yes" then
+					foundYes = true
+					TestKit.truthy(type(r.condition) == "function", "yes response should have a condition closure")
+					-- Verify condition logic with mock data
+					TestKit.eq(r.condition({ coins = 200 }), true,  "200 coins should satisfy yes")
+					TestKit.eq(r.condition({ coins = 199 }), false, "199 coins should NOT satisfy yes")
+				elseif r.id == "cant_afford" then
+					foundCantAfford = true
+					TestKit.truthy(type(r.condition) == "function", "cant_afford response should have a condition closure")
+					TestKit.eq(r.condition({ coins = 0 }),   true,  "0 coins should satisfy cant_afford")
+					TestKit.eq(r.condition({ coins = 200 }), false, "200 coins should NOT satisfy cant_afford")
+					TestKit.eq(r.next, "rent_too_poor", "cant_afford should navigate to rent_too_poor")
+				end
+			end
+			TestKit.truthy(foundYes, "yes response missing")
+			TestKit.truthy(foundCantAfford, "cant_afford response missing")
+		end)
+
+		TestKit.test("rent_too_poor exists and routes back to greeting + endDialogue", function()
+			local poor = Dialogues.StallManager.nodes.rent_too_poor
+			TestKit.truthy(poor ~= nil, "rent_too_poor node missing")
+			TestKit.truthy(#poor.responses >= 2, "rent_too_poor needs back + leave")
 		end)
 	end)
 

@@ -173,14 +173,19 @@ end
 
 -- ---------- Roblox-bound side ----------------------------------------------
 
--- Find the world Part tagged with `merchantId = npcId`. Used for talk-range
--- validation. Returns nil if the NPC isn't built into the world yet (which
--- is fine — it just means the merchant config exists but the NPC anchor
--- hasn't shipped, so no player can be in range and validation always fails).
+-- Find the world Part tagged with `merchantId = npcId` OR `dialogueId = npcId`.
+-- Used for talk-range validation. Either tag identifies the same NPC anchor —
+-- merchantId for direct shop NPCs (Substrate Dealer, Spore Merchant), dialogueId
+-- for dialogue-mediated NPCs that route to the shop via an `openShop` action
+-- (Forest Witch, post-2026-05-03 migration). Returns nil if the NPC isn't
+-- built into the world yet.
 local function findMerchantAnchor(npcId: string): BasePart?
 	for _, descendant in ipairs(workspace:GetDescendants()) do
-		if descendant:IsA("BasePart") and descendant:GetAttribute("merchantId") == npcId then
-			return descendant
+		if descendant:IsA("BasePart") then
+			if descendant:GetAttribute("merchantId") == npcId
+				or descendant:GetAttribute("dialogueId") == npcId then
+				return descendant
+			end
 		end
 	end
 	return nil

@@ -22,6 +22,7 @@ local Dialogues = require(ReplicatedStorage.Shared.Dialogues)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Quest = require(ServerScriptService.Server.Quest)
 local Travel = require(ServerScriptService.Server.Travel)
+local Stall = require(ServerScriptService.Server.Stall)
 
 local Dialogue = {}
 
@@ -98,6 +99,17 @@ local ACTION_HANDLERS: { [string]: (Player, any, string) -> () } = {
 	requestBiomeTravel = function(player, action, _npcId)
 		if type(action.biomeId) ~= "string" then return end
 		Travel.requestTravel(player, action.biomeId)
+	end,
+	-- Player Stalls (Phase 2). Dialogue routes the StallManager's "Manage my
+	-- stall" / "Open my mailbox" responses to the OpenStallOwnerUI remote;
+	-- the "Rent a featured slot" confirmation routes to Stall.requestRentFeatured
+	-- (same code path the RentFeaturedSlot remote handler uses — B-6 lock).
+	openStallOwnerUI = function(player, action, _npcId)
+		local tab = (type(action.tab) == "string") and action.tab or "listings"
+		Remotes.get(Constants.REMOTES.OpenStallOwnerUI):FireClient(player, { tab = tab })
+	end,
+	rentFeaturedSlot = function(player, _action, _npcId)
+		Stall.requestRentFeatured(player)
 	end,
 }
 

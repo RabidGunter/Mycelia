@@ -77,6 +77,16 @@ screen.Enabled = false
 screen.IgnoreGuiInset = true
 screen.Parent = playerGui
 
+-- Separate always-on ScreenGui for transaction toasts. Lives independent of
+-- the modal so closeShop()'s screen.Enabled=false doesn't immediately hide
+-- the "+N coins" pop-up that fires alongside it.
+local toastScreen = Instance.new("ScreenGui")
+toastScreen.Name = "ShopToast"
+toastScreen.ResetOnSpawn = false
+toastScreen.DisplayOrder = 13       -- above the modal
+toastScreen.IgnoreGuiInset = true
+toastScreen.Parent = playerGui
+
 local overlay = Instance.new("TextButton")
 overlay.Size = UDim2.fromScale(1, 1)
 overlay.BackgroundColor3 = C.forest.ink
@@ -267,13 +277,16 @@ local function showToast(text: string, success: boolean)
 	toast.Font = FONT.button.font
 	toast.TextSize = FONT.button.size
 	toast.BorderSizePixel = 0
-	toast.Parent = screen
+	-- Parented to toastScreen (independent of the modal) so closeShop()
+	-- doesn't immediately hide it.
+	toast.Parent = toastScreen
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, UI.radius.button)
 	corner.Parent = toast
+	-- Slow the tween so the player has time to read the result.
 	local tween = TweenService:Create(toast,
-		TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ Position = UDim2.fromScale(0.5, 0.32), TextTransparency = 1, BackgroundTransparency = 1 }
+		TweenInfo.new(2.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Position = UDim2.fromScale(0.5, 0.30), TextTransparency = 1, BackgroundTransparency = 1 }
 	)
 	tween:Play()
 	tween.Completed:Connect(function() toast:Destroy() end)

@@ -47,7 +47,12 @@
 -- Coordinates of procedural pieces are clustered around the origin so a
 -- default spawn point puts the player in the middle of everything.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
+
+local Constants = require(ReplicatedStorage.Shared.Constants)
+local PlotAnchors = require(ServerScriptService.Server.PlotAnchors)
 
 local MapSetup = {}
 
@@ -552,6 +557,126 @@ local function buildPlots(count: number): { Instance }
 	return plots
 end
 
+-- ---------- Player Stalls (Phase 2 Wave 3a) -----------------------------
+-- Three world-build helpers per CONTEXT.md D-12 + spec §188-218:
+--   buildStallManager       — single NPC at the head of the featured row
+--   buildFeaturedRowStalls  — 12 anchored stall stands (Constants.STALL.featuredRowOffsets)
+--   buildPlotAnchorGrid     — 64 plot tiles in the Cottages zone (8x8 grid)
+-- Hand-built escape valve per existing convention (skip if Workspace already
+-- has the named instance; backfill the attribute if missing so Stall.luau's
+-- ProximityPrompt routing still works).
+
+local function buildStallManager()
+	local existing = Workspace:FindFirstChild("StallManagerAnchor")
+	if existing and existing:IsA("BasePart") then
+		if existing:GetAttribute("dialogueId") == nil then
+			existing:SetAttribute("dialogueId", "StallManager")
+		end
+		return
+	end
+	local anchor = makePart(
+		"StallManagerAnchor",
+		Vector3.new(2.5, 5, 2.5),
+		Constants.STALL.stallManagerPosition,
+		Color3.fromRGB(170, 140, 105),                -- warm tan, matches market vibe
+		Enum.Material.SmoothPlastic
+	)
+	anchor:SetAttribute("dialogueId", "StallManager")
+	anchor.Parent = Workspace
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "DialoguePrompt"
+	prompt.ActionText = "Talk to Stall Manager"
+	prompt.ObjectText = "Stall Manager"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = anchor
+end
+
+local function buildFeaturedRowStalls()
+	-- 12 anchored stall stands south of the Trading Post marker. Each stand
+	-- gets a `stallSellerUserId` attribute (initially unset; populated by
+	-- Stall.requestRentFeatured when a player rents that slot).
+	local origin = Constants.STALL.featuredRowOrigin
+	for slotIndex = 1, Constants.STALL.featuredSlotCount do
+		local name = string.format("FeaturedStall_%02d", slotIndex)
+		local existing = Workspace:FindFirstChild(name)
+		if existing and existing:IsA("BasePart") then
+			-- Hand-built escape valve: backfill featuredSlotIndex attribute if missing.
+			if existing:GetAttribute("featuredSlotIndex") == nil then
+				existing:SetAttribute("featuredSlotIndex", slotIndex)
+			end
+		else
+			local offset = Constants.STALL.featuredRowOffsets[slotIndex] or Vector3.new(0, 0, 0)
+			local stand = makePart(
+				name,
+				Vector3.new(4, 3, 4),
+				origin + offset + Vector3.new(0, 1.5, 0),
+				Color3.fromRGB(140, 100, 70),         -- darker wood tone
+				Enum.Material.Wood
+			)
+			stand:SetAttribute("featuredSlotIndex", slotIndex)
+			-- stallSellerUserId starts unset; Stall.requestRentFeatured populates it
+			stand.Parent = Workspace
+
+			-- Top sign (placeholder; real signs land in polish pass)
+			local signPost = makePart(
+				"FeaturedStallSign_" .. string.format("%02d", slotIndex),
+				Vector3.new(0.4, 2, 0.4),
+				origin + offset + Vector3.new(0, 4, 0),
+				Color3.fromRGB(110, 80, 55),
+				Enum.Material.Wood
+			)
+			signPost.Parent = stand
+
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "StallPrompt"
+			prompt.ActionText = "Browse stall"
+			prompt.ObjectText = "Featured Stall " .. slotIndex
+			prompt.HoldDuration = 0
+			prompt.MaxActivationDistance = 10
+			prompt.RequiresLineOfSight = false
+			-- Disabled until a player rents this slot. Stall.requestRentFeatured
+			-- enables it + sets stallSellerUserId; sweeper disables it on expiry.
+			prompt.Enabled = false
+			prompt.Parent = stand
+		end
+	end
+end
+
+local function buildPlotAnchorGrid()
+	-- 8x8 grid of plot anchor tiles in the Cottages zone, west of spawn.
+	-- Each tile is a thin slab Part named "tile_NN" with attribute
+	-- `plotAnchorId = "tile_NN"`. PlotAnchors.tileIdToPosition derives the
+	-- world position from the tile id + Constants.STALL.cottagesZoneOrigin.
+	local total = Constants.STALL.plotGridSize * Constants.STALL.plotGridSize
+	local tileSize = Constants.STALL.plotTileSize
+	for i = 1, total do
+		local tileId = string.format("tile_%02d", i)
+		local existing = Workspace:FindFirstChild(tileId)
+		if existing and existing:IsA("BasePart") then
+			if existing:GetAttribute("plotAnchorId") == nil then
+				existing:SetAttribute("plotAnchorId", tileId)
+			end
+		else
+			local pos = PlotAnchors.tileIdToPosition(tileId)
+			if pos then
+				-- Thin slab (0.5 stud tall) so it's visually a "tile" not a block.
+				local tile = makePart(
+					tileId,
+					Vector3.new(tileSize, 0.5, tileSize),
+					pos + Vector3.new(0, 0.25, 0),
+					Color3.fromRGB(120, 145, 95),     -- meadow green
+					Enum.Material.Grass
+				)
+				tile:SetAttribute("plotAnchorId", tileId)
+				tile.Parent = Workspace
+			end
+		end
+	end
+end
+
 -- Public API ------------------------------------------------------------------
 
 function MapSetup.build(plotCount: number): { wildSpawnArea: BasePart, plots: { Instance } }
@@ -565,6 +690,9 @@ function MapSetup.build(plotCount: number): { wildSpawnArea: BasePart, plots: { 
 	buildOldHermit()
 	buildWanderingAlchemist()
 	buildTradingPostMarker()
+	buildStallManager()
+	buildFeaturedRowStalls()
+	buildPlotAnchorGrid()
 	buildCauldron()
 	local wildSpawnArea = buildWildSpawnArea()
 	local plots = buildPlots(plotCount)
