@@ -1,0 +1,29 @@
+{
+  "source_path": "c:/Users/fonte/Documents/Mycelia/docs/specs/visual-language.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Visual Language",
+  "summary": "Defines exact color, typography, motion, spacing, and surface tokens for all UI and world surfaces, including biome and rarity palettes.",
+  "scope": [
+    "brand palette",
+    "rarity tiers",
+    "biome palettes",
+    "UI surface tokens",
+    "typography",
+    "iconography",
+    "motion tokens",
+    "spacing system",
+    "surface elevation",
+    "world particle and lighting tokens",
+    "Constants.UI table"
+  ],
+  "cross_refs": [
+    "src/client/",
+    "DESIGN.md",
+    "Constants.UI"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

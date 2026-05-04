@@ -1,0 +1,13 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\decisions\\001-biome-architecture.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Decision: Biome Architecture",
+  "summary": "Decision to implement biomes as zones within a single Roblox Place, reserving TeleportService for ephemeral foraging expeditions only.",
+  "scope": ["biomes", "MapSetup.lua", "WildSpawn.lua", "Travel NPC", "TeleportService", "StreamingEnabled", "foraging expeditions", "hut visiting", "cross-biome events"],
+  "cross_refs": ["../ROADMAP.md"],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,28 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\decisions\\002-cultivation-yield-formula.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Decision: Cultivation Yield + Rare-Variant Formula",
+  "summary": "Locks per-species yieldBySubstrate table, multiplicative cultivation yield formula, decoupled growth-time formula, and rare-variant chance formula for Phase 1 cultivation depth.",
+  "scope": [
+    "cultivation",
+    "yield formula",
+    "substrate compatibility",
+    "rare-variant chance",
+    "growth-time formula",
+    "plot state machine",
+    "magical loam",
+    "Species data",
+    "Constants.CULTIVATION",
+    "Planting",
+    "Harvesting"
+  ],
+  "cross_refs": [
+    "../ROADMAP.md",
+    "../specs/potions-and-recipes.md"
+  ],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

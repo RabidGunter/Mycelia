@@ -1,0 +1,26 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\visual-references.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Visual References",
+  "summary": "Curated external reference board (links + commentary) for Mycelia's cottagecore + Ghibli aesthetic, paired with the visual-language spec.",
+  "scope": [
+    "visual aesthetic",
+    "shop UI references",
+    "trading post UI references",
+    "merchant UI patterns",
+    "cozy game UI patterns",
+    "biome mood references",
+    "color palette tools",
+    "Ghibli cottagecore inspiration"
+  ],
+  "cross_refs": [
+    "docs/specs/visual-language.md",
+    "specs/visual-language.md",
+    "specs/remote-api.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,35 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\CONTRIBUTING.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Contributing to Mycelia",
+  "summary": "Process guide for keeping documentation in sync with code changes, including ADR/spec authoring rules, definition of done, and multi-machine git workflow.",
+  "scope": [
+    "documentation hygiene",
+    "ADR authoring process",
+    "spec authoring process",
+    "definition of done",
+    "code style rules",
+    "multi-machine workflow",
+    "git workflow"
+  ],
+  "cross_refs": [
+    "../HANDOFF.md",
+    "../README.md",
+    "ROADMAP.md",
+    "decisions/",
+    "decisions/001-biome-architecture.md",
+    "specs/",
+    "specs/species-data.md",
+    "specs/save-schema-v3.md",
+    "specs/remote-api.md",
+    "specs/potions-and-recipes.md",
+    "specs/spirits.md",
+    "specs/biome-config.md",
+    "git-setup.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

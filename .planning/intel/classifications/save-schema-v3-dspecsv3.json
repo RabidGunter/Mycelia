@@ -1,0 +1,33 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\save-schema-v3.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Spec — Save Schema v3",
+  "summary": "Complete PlayerData schema v3 with field-by-field reference, v1/v2->v3 migration code, and ProfileService integration pattern for Phase 1.",
+  "scope": [
+    "PlayerData schema v3",
+    "schemaVersion field",
+    "inventoryByCategory (11 categories)",
+    "spirits (activeRoster, allOwned)",
+    "decorations (unlocked, placed)",
+    "plots (lifecycle, cross-biome layout)",
+    "stats counters and discovery sets",
+    "reputation",
+    "activeQuests",
+    "gamepassesOwned",
+    "settings",
+    "auditTrail",
+    "migrate() function",
+    "ProfileService configuration and player lifecycle",
+    "PlayerData wrapper API (get/update/save)",
+    "SaveSchemaSpec tests"
+  ],
+  "cross_refs": [
+    "biome-config.md",
+    "../decisions/003-reputation-rates.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,27 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\dialogue-system.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "NPC Dialogue System — Spec",
+  "summary": "Technical spec for a tree-based NPC dialogue system: pure-data trees, client-side navigation, server-side action validation, and Phase 2 action dispatch.",
+  "scope": [
+    "NPC dialogue trees",
+    "Dialogues.luau data shape",
+    "Dialogue.luau server dispatcher",
+    "DialogueController.client.luau",
+    "ProximityPrompt anchor routing",
+    "DialogueAction remote contract",
+    "Action kinds (openShop, endDialogue, giveItem, startQuest)",
+    "Dialogue UI surface",
+    "Walk-away auto-close",
+    "DialoguesSpec tests",
+    "Forest Witch migration from direct-prompt shop"
+  ],
+  "cross_refs": [
+    "visual-language.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

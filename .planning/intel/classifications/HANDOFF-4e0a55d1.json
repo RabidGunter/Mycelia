@@ -1,0 +1,29 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\mycelia\\HANDOFF.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Coder Handoff",
+  "summary": "Onboarding handoff document describing project state, architecture, world layout, recent changes, outstanding work, dev loop, and session log for the Mycelia Roblox game.",
+  "scope": [
+    "project orientation",
+    "Rojo + Studio setup",
+    "src/ architecture overview",
+    "world layout coordinates",
+    "hand-built override contracts (MapSetup, TerrainBuilder, Trees)",
+    "recent terrain/cave/pond/koi/trees changes",
+    "outstanding work (placeholder trees, Studio UI issues, fantasy polish)",
+    "daily dev loop and quirks",
+    "design rules and prohibitions",
+    "test runner overview",
+    "session log"
+  ],
+  "cross_refs": [
+    "C:\\Users\\fonte\\Documents\\Mycelia\\mushroom_forest_design_doc.md",
+    "README.md",
+    "SETUP.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

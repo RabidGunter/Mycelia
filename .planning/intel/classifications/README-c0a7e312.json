@@ -1,0 +1,13 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\README.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia",
+  "summary": "Project root README with Rojo getting-started instructions for building and serving the Mycelia Roblox place.",
+  "scope": ["Rojo", "Roblox Studio", "build instructions", "project setup"],
+  "cross_refs": ["https://github.com/rojo-rbx/rojo", "https://rojo.space/docs"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

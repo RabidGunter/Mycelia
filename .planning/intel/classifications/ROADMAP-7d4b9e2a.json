@@ -1,0 +1,41 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\ROADMAP.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Build Roadmap",
+  "summary": "Phased, self-paced task list tracking Mycelia's progress from Pre-Alpha through Global Launch, grouping checkable tasks by phase with size markers and completion status.",
+  "scope": [
+    "build phases",
+    "task tracking",
+    "Phase 1 Alpha",
+    "Phase 2 Closed Beta",
+    "Phase 3 Soft Launch",
+    "Phase 4 Global Launch",
+    "brewing depth",
+    "Forest Spirits",
+    "biomes",
+    "Trading Post",
+    "Player Stalls",
+    "Co-op Expeditions",
+    "Quest system",
+    "NPC dialogue",
+    "Shop UI",
+    "monetization",
+    "hut and decoration",
+    "LiveOps",
+    "seasons and weather",
+    "open questions"
+  ],
+  "cross_refs": [
+    "decisions/001-biome-architecture.md",
+    "decisions/002-cultivation-yield-formula.md",
+    "decisions/003-reputation-rates.md",
+    "decisions/004-coin-economy.md",
+    "specs/shop-ui.md",
+    "../src/server/Tests/DialoguesSpec.luau"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

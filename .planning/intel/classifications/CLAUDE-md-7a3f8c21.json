@@ -1,0 +1,29 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\CLAUDE.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "CLAUDE.md",
+  "summary": "Project context primer for AI assistants working on Mycelia, indexing key docs, codebase rules, working environment, and current phase status.",
+  "scope": [
+    "AI assistant onboarding",
+    "project conventions",
+    "codebase rules",
+    "docs index",
+    "session handoff process",
+    "phase status"
+  ],
+  "cross_refs": [
+    "HANDOFF.md",
+    "docs/CONTRIBUTING.md",
+    "docs/ROADMAP.md",
+    "docs/DESIGN.md",
+    "docs/decisions/",
+    "docs/specs/",
+    "docs/git-setup.md",
+    "docs/specs/visual-language.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

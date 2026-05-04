@@ -1,0 +1,33 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\PROJECT-REVIEW.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Project Review",
+  "summary": "Reviewer-facing snapshot of Mycelia: what the cozy mushroom-cultivation Roblox game is, what's been built across Pre-Alpha and Phase 1, what's coming, and where feedback is wanted.",
+  "scope": [
+    "Mycelia game overview",
+    "core gameplay loop",
+    "depth layer",
+    "Pre-Alpha shipped features",
+    "Phase 1 Alpha shipped features",
+    "Phase 2 Closed Beta progress",
+    "visual direction",
+    "architecture overview",
+    "Phase 2 / 3 / 4 roadmap",
+    "feedback request areas",
+    "project stats"
+  ],
+  "cross_refs": [
+    "DESIGN.md",
+    "specs/visual-language.md",
+    "docs/specs/visual-language.md",
+    "docs/visual-references.md",
+    "ROADMAP.md",
+    "docs/ROADMAP.md",
+    "specs/remote-api.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

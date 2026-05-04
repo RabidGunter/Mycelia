@@ -1,0 +1,26 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\quest-system.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Quest System — Spec",
+  "summary": "Technical spec for Phase 2 quest system: pure-data quest definitions, server-side state tracking, event-driven progress, dialogue-driven lifecycle, Quest Journal UI, HUD widget, and 5-quest tutorial sequence.",
+  "scope": [
+    "Quest system",
+    "Quest definitions data shape",
+    "Objective event kinds",
+    "Server-side quest state tracking",
+    "Dialogue-driven quest lifecycle (startQuest/turnInQuest)",
+    "Quest Journal UI",
+    "HUD pinned quest widget",
+    "Tutorial 5-quest sequence",
+    "Gardener Coach NPC",
+    "QuestsSpec tests"
+  ],
+  "cross_refs": [
+    "dialogue-system.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,30 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\shop-ui.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Shop UI — Spec",
+  "summary": "Technical spec for the shared Buy/Sell merchant UI: NPC config schema, wire flow, validation matrix, inventory split, reputation shim, UI surface, and tests.",
+  "scope": [
+    "Shop UI",
+    "Merchant NPCs",
+    "Constants.MERCHANTS config",
+    "ItemListing schema",
+    "OpenShop / BuyFromMerchant / SellToMerchant remotes",
+    "Shop validation",
+    "Inventory split (data.inventory vs inventoryByCategory)",
+    "Reputation shim",
+    "ForestWitch migration"
+  ],
+  "cross_refs": [
+    "remote-api.md",
+    "../../HANDOFF.md:185",
+    "save-schema-v3.md",
+    "visual-language.md",
+    "JournalController.client.luau",
+    "Tests/ShopSpec.luau"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

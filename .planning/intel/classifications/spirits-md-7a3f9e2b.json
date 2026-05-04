@@ -1,0 +1,30 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\spirits.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Spec — Forest Spirits",
+  "summary": "Complete catalog and implementation contract for the launch Forest Spirits system: 7 spirit types, attraction maps, roster mechanics, world AI, claim flow, trading, and PassiveBonuses module.",
+  "scope": [
+    "Forest Spirits",
+    "Spirit catalog (Common/Rare/Legendary)",
+    "Attraction system",
+    "Roster mechanics",
+    "Spirit world spawn",
+    "Claim flow",
+    "Wandering AI",
+    "Spirit trading",
+    "PassiveBonuses module",
+    "Spirits.lua server module",
+    "Crystal Shard item",
+    "Constants.SPIRITS"
+  ],
+  "cross_refs": [
+    "../ROADMAP.md",
+    "save-schema-v3.md",
+    "remote-api.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

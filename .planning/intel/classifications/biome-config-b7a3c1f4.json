@@ -1,0 +1,28 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\biome-config.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Spec — Biome Configuration",
+  "summary": "Defines the Constants.BIOMES schema and the complete Misty Hollow biome configuration, including travel, atmosphere transitions, streaming tuning, and unlock thresholds.",
+  "scope": [
+    "Constants.BIOMES schema",
+    "Misty Hollow biome",
+    "Starter Glade biome",
+    "biome travel system",
+    "TravelCoordinator NPC",
+    "atmosphere and lighting transitions",
+    "wild spawn configuration",
+    "StreamingEnabled tuning",
+    "biome unlock triggers",
+    "MapSetup procedural vs hand-built terrain"
+  ],
+  "cross_refs": [
+    "../ROADMAP.md",
+    "../decisions/001-biome-architecture.md",
+    "../decisions/003-reputation-rates.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

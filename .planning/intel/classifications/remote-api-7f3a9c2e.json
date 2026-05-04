@@ -1,0 +1,38 @@
+{
+  "source_path": "c:/Users/fonte/Documents/Mycelia/docs/specs/remote-api.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Spec — Remote API Contracts",
+  "summary": "Authoritative contract for every RemoteEvent and RemoteFunction in Mycelia: signatures, directions, validation rules, error codes, and rate limits.",
+  "scope": [
+    "RemoteEvents",
+    "RemoteFunctions",
+    "client-server validation",
+    "error codes",
+    "rate limits",
+    "PlantSpecies",
+    "Brew",
+    "ConsumePotion",
+    "ActiveEffects",
+    "Reputation",
+    "ClaimSpirit",
+    "EquipSpirit",
+    "Shop (BuyFromMerchant / SellToMerchant)",
+    "Trade flow",
+    "Stalls",
+    "Expeditions",
+    "Quests",
+    "Settings",
+    "Biome travel",
+    "Hut visits",
+    "Cinematic camera signals"
+  ],
+  "cross_refs": [
+    "../decisions/001-biome-architecture.md",
+    "../CONTRIBUTING.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

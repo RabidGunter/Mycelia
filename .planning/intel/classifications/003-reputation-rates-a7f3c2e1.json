@@ -1,0 +1,28 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\decisions\\003-reputation-rates.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Decision: Reputation Rates and Tiers",
+  "summary": "Locks the two-layer reputation model: per-NPC rep cap 5000 with five friendship tiers, total renown gating biome unlocks, and a decelerating gain curve.",
+  "scope": [
+    "reputation system",
+    "per-NPC reputation",
+    "total renown",
+    "friendship tiers",
+    "biome unlock thresholds",
+    "diminishing returns curve",
+    "Reputation.lua module",
+    "Constants.REPUTATION",
+    "Constants.BIOME_UNLOCK_RENOWN",
+    "save schema v3 extension",
+    "NPC dialogue UI",
+    "player profile UI"
+  ],
+  "cross_refs": [
+    "../ROADMAP.md"
+  ],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

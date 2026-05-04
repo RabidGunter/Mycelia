@@ -1,0 +1,24 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\git-setup.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Git Setup for Mycelia",
+  "summary": "One-time git setup guide and asymmetric pull-only work-laptop / push-from-personal-machine workflow for syncing the Mycelia project across machines.",
+  "scope": [
+    "git initialization",
+    "GitHub remote setup",
+    ".gitignore policy",
+    "multi-machine workflow",
+    "patch-based sync (git format-patch / git am)",
+    "branching conventions",
+    "recovery commands"
+  ],
+  "cross_refs": [
+    "CONTRIBUTING.md",
+    "../HANDOFF.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

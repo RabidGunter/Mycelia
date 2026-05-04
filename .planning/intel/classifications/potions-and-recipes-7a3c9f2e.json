@@ -1,0 +1,30 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\potions-and-recipes.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Spec — Potions and Recipes",
+  "summary": "Implementation spec defining 20 brewing recipes, 20 potion catalog entries, and 10 potion effect kinds with parameters, stacking rules, and PotionEffects.lua module structure.",
+  "scope": [
+    "Recipes",
+    "Potions",
+    "PotionEffects",
+    "brewing",
+    "effect kinds",
+    "stacking rules",
+    "Recipes.lua",
+    "Potions.lua",
+    "PotionEffects.lua",
+    "Constants.POTIONS",
+    "Brew remote",
+    "Tests/PotionEffectsSpec.lua",
+    "Tests/RecipeLookupSpec.lua"
+  ],
+  "cross_refs": [
+    "../ROADMAP.md",
+    "../SCRIPTING-ORDER.pdf"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

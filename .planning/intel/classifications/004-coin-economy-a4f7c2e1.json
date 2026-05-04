@@ -1,0 +1,26 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\decisions\\004-coin-economy.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mycelia — Decision: Coin Economy Floor and Ceiling",
+  "summary": "Locks coin economy: 10B anti-exploit hard cap, 10M realistic player wealth ceiling, fixed NPC prices, and player-trading as the only inflation vector.",
+  "scope": [
+    "coin economy",
+    "wealth tiers",
+    "anti-exploit hard cap",
+    "audit log thresholds",
+    "substrate costs",
+    "plant costs",
+    "stall rent",
+    "inflation control",
+    "Constants.ECONOMY",
+    "Coins.add server guard"
+  ],
+  "cross_refs": [
+    "../ROADMAP.md"
+  ],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

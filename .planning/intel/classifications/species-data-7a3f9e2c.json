@@ -1,0 +1,13 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\species-data.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Spec — Species Data and Substrates",
+  "summary": "Complete data tables for all 15 Pre-Alpha species and 6 substrates, with field reference, validation rules, and authoring guidance.",
+  "scope": ["species data", "substrates", "Constants.SUBSTRATES", "Species.lua", "yieldBySubstrate", "rare variants", "cultivation tiers", "validation rules"],
+  "cross_refs": ["../decisions/002-cultivation-yield-formula.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

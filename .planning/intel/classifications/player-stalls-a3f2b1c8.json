@@ -1,0 +1,33 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\player-stalls.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Player Stalls — Spec",
+  "summary": "Technical spec for a player-driven storefront economy with personal stalls, featured-row rentals, fixed-price async listings, mailbox-claimed proceeds, and a shared Exchange core.",
+  "scope": [
+    "player stalls",
+    "featured row rentals",
+    "Trading Post zone",
+    "Plot Directory UI",
+    "mailbox",
+    "Exchange.luau core",
+    "Stall.luau",
+    "PlotAnchors.luau",
+    "save schema additions",
+    "remote API (CreateListing, BuyListing, etc.)",
+    "Stall Manager NPC",
+    "Stall Owner/Buyer UI",
+    "audit log",
+    "anti-griefing rate limits"
+  ],
+  "cross_refs": [
+    "trading-post.md",
+    "remote-api.md",
+    "../decisions/001-biome-architecture.md",
+    "trading-post.md §176"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

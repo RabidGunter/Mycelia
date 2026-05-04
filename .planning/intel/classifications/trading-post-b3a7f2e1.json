@@ -1,0 +1,25 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\specs\\trading-post.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Trading Post — Spec",
+  "summary": "Technical spec for the player-driven trade system: in-memory session state machine, validation matrix, atomic execution, audit log schema, and UI surface.",
+  "scope": [
+    "Trading Post",
+    "TradeSession state machine",
+    "trade validation",
+    "atomic trade execution",
+    "audit log DataStore",
+    "trade modal UI",
+    "inventory split routing",
+    "TradeSpec tests"
+  ],
+  "cross_refs": [
+    "remote-api.md",
+    "shop-ui.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

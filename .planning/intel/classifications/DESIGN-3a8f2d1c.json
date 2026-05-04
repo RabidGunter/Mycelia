@@ -1,0 +1,31 @@
+{
+  "source_path": "c:\\Users\\fonte\\Documents\\Mycelia\\docs\\DESIGN.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Mushroom Forest — Roblox Game Design Document",
+  "summary": "Full design vision for Mycelia: a cozy mushroom-cultivation Roblox game blending Bee Swarm depth with Stardew aesthetic, covering systems, monetization, roadmap, and retention strategy.",
+  "scope": [
+    "core gameplay loop",
+    "mushroom collection and rarity tiers",
+    "cultivation mechanics",
+    "brewing system and recipe discovery",
+    "trading post and player economy",
+    "forest spirits companions",
+    "biomes and foraging expeditions",
+    "seasons and lunar cycles",
+    "quest system",
+    "progression curve",
+    "monetization model",
+    "LiveOps calendar",
+    "social and community hooks",
+    "visual and audio direction",
+    "game naming options",
+    "build roadmap to launch",
+    "failure modes"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}
