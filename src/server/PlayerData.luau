@@ -14,6 +14,7 @@
 --
 -- Spec: docs/specs/save-schema-v3.md.
 
+local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -21,6 +22,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local ProfileService = require(ServerScriptService.Server.Vendor.ProfileService)
+local PendingMutations = require(ServerScriptService.Server.PendingMutations)
 
 local PlayerData = {}
 
@@ -232,6 +234,15 @@ PlayerData.SCHEMA_VERSION = SCHEMA_VERSION
 
 -- ---------- ProfileService setup ------------------------------------------
 
+-- Pending stall mutations queue (D-19). Reads happen in onPlayerAdded BEFORE
+-- any other startup hook; deletes happen on successful drain.
+local PENDING_STORE_NAME = "MyceliaStallPendingMutations_v1"
+local pendingStore = nil
+do
+	local ok, store = pcall(DataStoreService.GetDataStore, DataStoreService, PENDING_STORE_NAME)
+	if ok then pendingStore = store end
+end
+
 local ProfileTemplate = defaultData()
 -- Existing store key from Pre-Alpha kept verbatim (don't rename — schema
 -- versioning is in `data.schemaVersion`, not the store name; renaming would
@@ -280,6 +291,37 @@ local function onPlayerAdded(player: Player)
 	profile.Data.auditTrail.sessionsPlayed = (profile.Data.auditTrail.sessionsPlayed or 0) + 1
 
 	profiles[player] = profile
+
+	-- D-19: drain any queued stall mutations that arrived while this player
+	-- was offline. MUST run BEFORE the FireClient below so the client's first
+	-- frame sees the post-drain state.
+	if pendingStore then
+		local ok, mutations = pcall(function()
+			return pendingStore:GetAsync(tostring(player.UserId))
+		end)
+		if ok and type(mutations) == "table" and #mutations > 0 then
+			local applied, errors = PendingMutations.drain(profile.Data, mutations)
+			if #errors > 0 then
+				warn(string.format(
+					"[PlayerData] PendingMutations drain partial for userId=%d: applied=%d errors=%s",
+					player.UserId, applied, table.concat(errors, " | ")
+				))
+			end
+			-- Atomic delete on full success only — partial failures leave the
+			-- queue intact for next login.
+			if applied > 0 and #errors == 0 then
+				pcall(function()
+					pendingStore:RemoveAsync(tostring(player.UserId))
+				end)
+			end
+		end
+	end
+
+	-- Self-sweep any expired listings + featured slot in the loaded profile
+	-- (catches things that expired while player was offline). Lazy-required
+	-- to break the PlayerData↔Stall cycle (Stall requires PlayerData).
+	local Stall = require(ServerScriptService.Server.Stall)
+	Stall.selfSweepOnLoad(profile.Data, os.time())
 
 	-- Initial state push so client UIs render with real data.
 	Remotes.get(Constants.REMOTES.PlayerDataUpdated):FireClient(player, profile.Data)

@@ -370,4 +370,496 @@ function Stall.browseDirectory(featuredRegistry): { table }
 	return rows
 end
 
+-- ============================================================================
+-- WAVE 2b: Roblox-bound wiring (start, handlers, sweeper, applyToSeller,
+-- requestRentFeatured, ProximityPrompt routing).
+--
+-- Lazy-required modules (declared here to avoid cyclic requires at module load).
+-- ============================================================================
+
+local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local PlayerData = require(ServerScriptService.Server.PlayerData)
+local PendingMutations = require(ServerScriptService.Server.PendingMutations)
+local PlotAnchors = require(ServerScriptService.Server.PlotAnchors)
+local RateLimit = require(ServerScriptService.Server.RateLimit)
+
+-- ---------- Server-memory state -------------------------------------------
+
+-- Featured row allocation. { occupiedSlots = { [slotIndex] = { userId, expiresAt } } }.
+-- Server-memory only — lost on restart (acceptable v1; rental fee is small,
+-- crashes are rare). Slot stays occupied by userId for the full 24h rental
+-- regardless of seller's online/offline state.
+Stall.featuredRowState = { occupiedSlots = {} }
+
+local started = false
+
+-- ---------- Audit helper --------------------------------------------------
+
+local function audit(kind: string, payload: table)
+	Exchange.writeAudit(Exchange.buildAuditEntry(kind, payload))
+end
+
+-- ---------- applyToSeller (D-19 routing) ----------------------------------
+
+-- Routes a sellerMutation to the right destination per online/offline branch.
+-- Online: PlayerData.update directly. Offline: PendingMutations.write.
+function Stall.applyToSeller(sellerUserId: number, mutation: table): (boolean, string)
+	if type(sellerUserId) ~= "number" or type(mutation) ~= "table" then
+		return false, "INVALID_REQUEST"
+	end
+	local sellerPlayer = Players:GetPlayerByUserId(sellerUserId)
+	if sellerPlayer then
+		-- ONLINE: apply directly
+		local sellerData = PlayerData.get(sellerPlayer)
+		if not sellerData then
+			-- profile mid-load; queue instead
+			PendingMutations.write(sellerUserId, mutation)
+			return true, "OK"
+		end
+		PlayerData.update(sellerPlayer, function(d)
+			-- Reuse the drain logic for one-mutation list (keeps per-kind
+			-- dispatch in one place).
+			PendingMutations.drain(d, { mutation })
+		end)
+		-- Push MailboxUpdated to seller so their UI refreshes
+		Remotes.get(Constants.REMOTES.MailboxUpdated):FireClient(sellerPlayer, sellerData.stalls.mailbox)
+		return true, "OK"
+	else
+		-- OFFLINE: queue for next login
+		local ok = PendingMutations.write(sellerUserId, mutation)
+		return ok, ok and "OK" or "PENDING_WRITE_FAILED"
+	end
+end
+
+-- ---------- Featured row helpers (server-memory) --------------------------
+
+-- Sweep expired entries from featuredRowState.occupiedSlots.
+local function sweepFeaturedRow(now: number)
+	for slotIndex, entry in pairs(Stall.featuredRowState.occupiedSlots) do
+		if entry.expiresAt and now > entry.expiresAt then
+			Stall.featuredRowState.occupiedSlots[slotIndex] = nil
+		end
+	end
+end
+
+-- Build the featuredRowState snapshot used by canRentFeatured.
+-- Returns { occupiedSlots = { [slotIndex] = userId } } (just userId, not the entry table).
+local function featuredRowSnapshot(): table
+	local snap = { occupiedSlots = {} }
+	for slotIndex, entry in pairs(Stall.featuredRowState.occupiedSlots) do
+		snap.occupiedSlots[slotIndex] = entry.userId
+	end
+	return snap
+end
+
+-- ---------- requestRentFeatured (B-6 lock — public for dialogue) ---------
+
+function Stall.requestRentFeatured(player: Player): (boolean, string)
+	if not player or not player.Parent then return false, "INVALID_REQUEST" end
+	local data = PlayerData.get(player)
+	if not data then return false, "INVALID_REQUEST" end
+
+	local now = os.time()
+	sweepFeaturedRow(now)
+	local rowSnap = featuredRowSnapshot()
+	local ok, code, slotIndex = Stall.canRentFeatured(data, rowSnap, now, player.UserId)
+	if not ok then
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = code, action = "rent_featured",
+		})
+		return false, code
+	end
+
+	-- Atomic: deduct coins + set featuredRentExpiresAt
+	local expiresAt = now + Constants.STALL.featuredRentSeconds
+	PlayerData.update(player, function(d)
+		d.coins = (d.coins or 0) - Constants.STALL.featuredFee
+		d.stalls.featuredRentExpiresAt = expiresAt
+	end)
+
+	-- Claim slot in server-memory featuredRowState
+	Stall.featuredRowState.occupiedSlots[slotIndex] = {
+		userId    = player.UserId,
+		expiresAt = expiresAt,
+	}
+
+	audit("stall_featured_rented", {
+		sellerUserId = player.UserId,
+		slotIndex    = slotIndex,
+		fee          = Constants.STALL.featuredFee,
+		expiresAt    = expiresAt,
+	})
+
+	Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+		success = true, code = "OK", action = "rent_featured", slotIndex = slotIndex,
+	})
+	return true, "OK"
+end
+
+-- ---------- 6 remote handlers --------------------------------------------
+
+local function rateLimited(player, remoteName, action): boolean
+	local interval = Constants.STALL.rateLimits[remoteName]
+	if not RateLimit.check(player, remoteName, interval or 1) then
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = "RATE_LIMITED", action = action,
+		})
+		return true
+	end
+	return false
+end
+
+local function handleCreateListing(player: Player, payload)
+	if rateLimited(player, "CreateListing", "create") then return end
+	if type(payload) ~= "table" then return end
+
+	local data = PlayerData.get(player)
+	if not data then return end
+
+	local listing = {
+		itemId    = payload.itemId,
+		qty       = payload.qty,
+		unitPrice = payload.unitPrice,
+	}
+	local ok, code = Stall.canCreateListing(data, listing)
+	if not ok then
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = code, action = "create",
+		})
+		return
+	end
+
+	local listingId = Stall.newListingId()
+	local now = os.time()
+	local expiresAt = now + Constants.STALL.listingExpirySeconds
+	local newListing = {
+		itemId    = listing.itemId,
+		qty       = listing.qty,
+		unitPrice = listing.unitPrice,
+		listedAt  = now,
+		expiresAt = expiresAt,
+		featured  = (data.stalls.featuredRentExpiresAt or 0) > now,
+	}
+
+	-- Atomic: escrow items out of inventory, write listing
+	PlayerData.update(player, function(d)
+		Exchange.applyOneSided(d, { coins = 0, items = { [listing.itemId] = listing.qty } }, { coins = 0, items = {} })
+		d.stalls.listings[listingId] = newListing
+	end)
+
+	audit("stall_create", {
+		listingId    = listingId,
+		sellerUserId = player.UserId,
+		itemId       = listing.itemId,
+		qty          = listing.qty,
+		unitPrice    = listing.unitPrice,
+		expiresAt    = expiresAt,
+	})
+
+	Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+		success = true, code = "OK", action = "create", listingId = listingId,
+	})
+end
+
+local function handleCancelListing(player: Player, listingId)
+	if rateLimited(player, "CancelListing", "cancel") then return end
+	if type(listingId) ~= "string" then return end
+
+	local data = PlayerData.get(player)
+	if not data then return end
+
+	local ok, code = Stall.canCancelListing(data, listingId, player.UserId)
+	if not ok then
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = code, action = "cancel",
+		})
+		return
+	end
+
+	local overflowItems
+	PlayerData.update(player, function(d)
+		local _, _, overflow = Stall.cancelListing(d, listingId, player.UserId)
+		overflowItems = overflow
+	end)
+
+	if overflowItems then
+		audit("mailbox_overflow", {
+			sellerUserId = player.UserId,
+			items        = overflowItems,
+			reason       = "cancel",
+		})
+	end
+	audit("stall_cancel", {
+		listingId    = listingId,
+		sellerUserId = player.UserId,
+	})
+
+	Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+		success = true, code = "OK", action = "cancel", listingId = listingId,
+	})
+end
+
+local function handleBuyListing(player: Player, sellerUserId, listingId, qty)
+	if rateLimited(player, "BuyListing", "buy") then return end
+	if type(sellerUserId) ~= "number" or type(listingId) ~= "string" then return end
+
+	local buyerData = PlayerData.get(player)
+	if not buyerData then return end
+
+	-- Fetch seller data: online via PlayerData.get; offline via PendingMutations.peek
+	-- isn't enough — we need their current listings. For v1, only ONLINE sellers
+	-- can be bought from directly via this remote. Offline seller buys would
+	-- require reading their profile from DataStore, which is out of scope for v1.
+	-- (Featured directory only shows online sellers per the v1 simplification.)
+	local sellerPlayer = Players:GetPlayerByUserId(sellerUserId)
+	if not sellerPlayer then
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = "LISTING_GONE", action = "buy",
+		})
+		return
+	end
+	local sellerData = PlayerData.get(sellerPlayer)
+	if not sellerData then
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = "LISTING_GONE", action = "buy",
+		})
+		return
+	end
+
+	local listing = sellerData.stalls and sellerData.stalls.listings and sellerData.stalls.listings[listingId]
+	if not listing then
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = "LISTING_GONE", action = "buy",
+		})
+		return
+	end
+
+	-- Atomic: snapshot buyer → mutate buyer → applyToSeller → on failure restore
+	local snap = Exchange.snapshotData(buyerData)
+	local buyOk, buyCode, sellerMutation
+	PlayerData.update(player, function(d)
+		buyOk, buyCode, sellerMutation = Stall.executeBuy(
+			d, sellerData, listingId, qty or listing.qty,
+			player.UserId, sellerUserId, player.Name
+		)
+	end)
+
+	if not buyOk then
+		PlayerData.update(player, function(d)
+			Exchange.restoreFromSnapshot(d, snap)
+		end)
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = buyCode, action = "buy",
+		})
+		return
+	end
+
+	-- Apply seller side. For online sellers this is direct PlayerData.update
+	-- (and the listing gets removed in PendingMutations.drain dispatch for stall_sale).
+	local applyOk = Stall.applyToSeller(sellerUserId, sellerMutation)
+	if not applyOk then
+		-- Rare: queue write failed and seller is offline. Restore buyer.
+		PlayerData.update(player, function(d)
+			Exchange.restoreFromSnapshot(d, snap)
+		end)
+		Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+			success = false, code = "MUTATION_FAILED", action = "buy",
+		})
+		return
+	end
+
+	audit("stall_purchase", {
+		listingId    = listingId,
+		sellerUserId = sellerUserId,
+		buyerUserId  = player.UserId,
+		buyerName    = player.Name,
+		itemId       = listing.itemId,
+		qty          = sellerMutation.qty,
+		coinsEarned  = sellerMutation.coinsEarned,
+	})
+
+	Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+		success = true, code = "OK", action = "buy",
+		listingId = listingId, itemId = listing.itemId, qty = sellerMutation.qty,
+	})
+end
+
+local function handleRentFeaturedSlot(player: Player)
+	if rateLimited(player, "RentFeaturedSlot", "rent_featured") then return end
+	Stall.requestRentFeatured(player)
+end
+
+local function handleClaimMailbox(player: Player)
+	if rateLimited(player, "ClaimMailbox", "claim_mailbox") then return end
+
+	local data = PlayerData.get(player)
+	if not data then return end
+
+	local claimedCoins, claimedItems
+	PlayerData.update(player, function(d)
+		claimedCoins, claimedItems = Stall.claimMailbox(d)
+	end)
+
+	audit("stall_mailbox_claim", {
+		userId = player.UserId,
+		coins  = claimedCoins,
+		items  = claimedItems,
+	})
+
+	Remotes.get(Constants.REMOTES.MailboxUpdated):FireClient(player, data.stalls.mailbox)
+end
+
+local function handleBrowseDirectory(player: Player)
+	if rateLimited(player, "BrowseDirectory", "browse") then return end
+
+	local now = os.time()
+	sweepFeaturedRow(now)
+
+	-- v1: directory shows ONLINE sellers whose featured rental is active.
+	local registry = {}
+	for slotIndex, entry in pairs(Stall.featuredRowState.occupiedSlots) do
+		local sellerPlayer = Players:GetPlayerByUserId(entry.userId)
+		if sellerPlayer then
+			local sellerData = PlayerData.get(sellerPlayer)
+			if sellerData and sellerData.stalls then
+				local listingCount = 0
+				for _ in pairs(sellerData.stalls.listings or {}) do listingCount += 1 end
+				local plotPosition = sellerData.stalls.plotAnchorId
+					and PlotAnchors.tileIdToPosition(sellerData.stalls.plotAnchorId)
+					or nil
+				table.insert(registry, {
+					sellerUserId = entry.userId,
+					sellerName   = sellerPlayer.Name,
+					listingCount = listingCount,
+					plotPosition = plotPosition,
+				})
+			end
+		end
+	end
+
+	local rows = Stall.browseDirectory(registry)
+	-- Fire BrowseDirectory back to caller as the response
+	Remotes.get(Constants.REMOTES.BrowseDirectory):FireClient(player, rows)
+end
+
+-- ---------- ProximityPrompt routing ---------------------------------------
+
+local function handlePromptTriggered(prompt: ProximityPrompt, player: Player)
+	local part = prompt.Parent
+	if not part or not part:IsA("BasePart") then return end
+	-- Defer to other systems if their attribute is set on the same Part
+	if part:GetAttribute("merchantId") then return end
+	if part:GetAttribute("dialogueId") then return end
+
+	local sellerUserId = part:GetAttribute("stallSellerUserId")
+	if not sellerUserId or type(sellerUserId) ~= "number" then return end
+
+	-- Owner check: if player IS the seller, open Owner UI; else Buyer UI
+	if player.UserId == sellerUserId then
+		Remotes.get(Constants.REMOTES.OpenStallOwnerUI):FireClient(player, { tab = "listings" })
+	else
+		local sellerPlayer = Players:GetPlayerByUserId(sellerUserId)
+		if not sellerPlayer then
+			Remotes.get(Constants.REMOTES.StallTransactionCompleted):FireClient(player, {
+				success = false, code = "LISTING_GONE", action = "buy",
+			})
+			return
+		end
+		local sellerData = PlayerData.get(sellerPlayer)
+		Remotes.get(Constants.REMOTES.OpenStallBuyerUI):FireClient(player, {
+			sellerUserId = sellerUserId,
+			sellerName   = sellerPlayer.Name,
+			listings     = sellerData and sellerData.stalls and sellerData.stalls.listings or {},
+		})
+	end
+end
+
+-- ---------- Sweeper task --------------------------------------------------
+
+-- v1: only sweeps ONLINE players. Offline sellers self-sweep on next login
+-- via the hook in PlayerData.onPlayerAdded (Wave 2b adds that step).
+local function sweepOnlinePlayers(now: number)
+	for _, player in ipairs(Players:GetPlayers()) do
+		local data = PlayerData.get(player)
+		if data and data.stalls then
+			-- Listing expiry
+			local expired = Stall.expirySweep(data, now)
+			if #expired > 0 then
+				PlayerData.update(player, function(d)
+					for _, listingId in ipairs(expired) do
+						local _, _, overflow = Stall.cancelListing(d, listingId, player.UserId)
+						if overflow then
+							audit("mailbox_overflow", {
+								sellerUserId = player.UserId,
+								items        = overflow,
+								reason       = "expire",
+							})
+						end
+						audit("stall_expire", {
+							listingId    = listingId,
+							sellerUserId = player.UserId,
+						})
+					end
+				end)
+			end
+			-- Featured expiry (server-memory + per-player data both reset)
+			if data.stalls.featuredRentExpiresAt and now > data.stalls.featuredRentExpiresAt then
+				PlayerData.update(player, function(d)
+					d.stalls.featuredRentExpiresAt = nil
+				end)
+			end
+		end
+	end
+	sweepFeaturedRow(now)
+end
+
+-- ---------- start() -------------------------------------------------------
+
+function Stall.start()
+	if started then return end
+	started = true
+
+	Remotes.get(Constants.REMOTES.CreateListing).OnServerEvent:Connect(handleCreateListing)
+	Remotes.get(Constants.REMOTES.CancelListing).OnServerEvent:Connect(handleCancelListing)
+	Remotes.get(Constants.REMOTES.BuyListing).OnServerEvent:Connect(handleBuyListing)
+	Remotes.get(Constants.REMOTES.RentFeaturedSlot).OnServerEvent:Connect(handleRentFeaturedSlot)
+	Remotes.get(Constants.REMOTES.ClaimMailbox).OnServerEvent:Connect(handleClaimMailbox)
+	Remotes.get(Constants.REMOTES.BrowseDirectory).OnServerEvent:Connect(handleBrowseDirectory)
+
+	ProximityPromptService.PromptTriggered:Connect(handlePromptTriggered)
+
+	-- Sweeper task: every Constants.STALL.expirySweeperIntervalSeconds (60s).
+	task.spawn(function()
+		while true do
+			task.wait(Constants.STALL.expirySweeperIntervalSeconds)
+			local ok, err = pcall(sweepOnlinePlayers, os.time())
+			if not ok then warn("[Stall] sweeper error: " .. tostring(err)) end
+		end
+	end)
+
+	print("[Stall] start() complete — 6 handlers + ProximityPrompt + sweeper wired")
+end
+
+-- ---------- Self-sweep on player join (called by PlayerData.onPlayerAdded) -
+
+-- Process any expired listings + expired featured rental in the player's
+-- profile data. Called BEFORE the PlayerDataUpdated client push so the
+-- client's first frame sees the cleaned state. Pure on the data table; no
+-- remotes fire from here.
+function Stall.selfSweepOnLoad(data, now: number)
+	if not data or not data.stalls then return end
+	now = now or os.time()
+	local expired = Stall.expirySweep(data, now)
+	for _, listingId in ipairs(expired) do
+		Stall.cancelListing(data, listingId, nil)  -- nil callerUserId skips owner check
+		-- We don't audit here (no Player to attribute); audit happens only
+		-- when the sweeper or a handler runs. Acceptable for v1.
+	end
+	if data.stalls.featuredRentExpiresAt and now > data.stalls.featuredRentExpiresAt then
+		data.stalls.featuredRentExpiresAt = nil
+	end
+end
+
 return Stall
