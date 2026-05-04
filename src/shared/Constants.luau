@@ -36,9 +36,69 @@ Constants.CULTIVATION = {
 -- Economy ----------------------------------------------------------------------
 Constants.ECONOMY = {
 	startingCoins = 25,           -- enough to plant a couple of common patches
-	-- The Forest Witch's stall buys at species.baseSellPrice * tier.sellMultiplier.
-	-- This global modifier is the lever for tuning inflation across the economy.
-	witchPriceMultiplier = 1.0,
+}
+
+-- Merchants --------------------------------------------------------------------
+-- Every merchant NPC's config. The Shop system (src/server/Shop.luau) reads
+-- these to validate Buy/Sell requests, compute prices, and fire reputation
+-- gains. World code (MapSetup or hand-built NPCs) tags the NPC anchor Part
+-- with attribute `merchantId = "<npcId>"` so the prompt-trigger handler can
+-- resolve which merchant config to use.
+--
+-- See docs/specs/shop-ui.md for the full schema and field semantics.
+Constants.MERCHANT_DEFAULTS = {
+	talkRange = 14,                -- studs from anchor Part
+	repPerCoin = 0.001,            -- 1 rep per 1000 coins transacted
+	repGate = 0,
+}
+
+Constants.MERCHANTS = {
+	ForestWitch = {
+		displayName  = "Forest Witch",
+		description  = "Buys raw mushrooms at fair flat rates.",
+		talkRange    = 14,
+		buyCategories = { "mushrooms_raw" },
+		buyMultiplier = 1.0,        -- replaces the Pre-Alpha witchPriceMultiplier
+		itemsForSale  = {},          -- the witch sells nothing in Phase 2
+		reputationKey = "ForestWitch",
+		repPerCoin    = 0.001,
+		repGate       = 0,
+	},
+	SubstrateDealer = {
+		displayName  = "Substrate Dealer",
+		description  = "Cultivation supplies for the discerning grower.",
+		talkRange    = 14,
+		buyCategories = {},          -- sell-only for now (player can't sell back)
+		buyMultiplier = 0,
+		itemsForSale = {
+			Compost     = { unitPrice = 5,   category = "substrates" },
+			Straw       = { unitPrice = 8,   category = "substrates" },
+			Dung        = { unitPrice = 18,  category = "substrates" },
+			Hardwood    = { unitPrice = 25,  category = "substrates" },
+			Peat        = { unitPrice = 35,  category = "substrates" },
+			MagicalLoam = { unitPrice = 500, category = "substrates" },
+		},
+		reputationKey = "SubstrateDealer",
+		repPerCoin    = 0.001,
+		repGate       = 0,
+	},
+	SporeMerchant = {
+		displayName  = "Spore Merchant",
+		description  = "Carefully isolated spore samples for serious cultivators.",
+		talkRange    = 14,
+		buyCategories = {},
+		buyMultiplier = 0,
+		itemsForSale = {
+			BrownCapSpore = { unitPrice = 10, category = "spores" },
+			FairyCupSpore = { unitPrice = 15, category = "spores" },
+			InkpotSpore   = { unitPrice = 60, category = "spores" },
+		},
+		reputationKey = "SporeMerchant",
+		repPerCoin    = 0.001,
+		repGate       = 0,
+	},
+	-- Future Phase 2 merchants:
+	--   SpiritFood, Cosmetic, DecorationVendor.
 }
 
 -- Movement ---------------------------------------------------------------------
@@ -202,6 +262,54 @@ Constants.ITEMS = {
 		iconAssetId   = "rbxassetid://0", -- placeholder; user supplies
 		baseSellPrice = 50,
 	},
+
+	-- Substrates (Phase 2). Sold by SubstrateDealer at spawn. Currently INERT —
+	-- they sit in inventoryByCategory.substrates but no gameplay system reads
+	-- them yet. Cultivation depth (substrate-driven yield per ADR 002) wires
+	-- them in during Phase 3.
+	Compost = {
+		id = "Compost", displayName = "Compost", description = "Standard growing medium. Works for any common species.",
+		category = "substrates", stackable = true, maxStack = 99, tradable = true, droppable = false, baseSellPrice = 3,
+	},
+	Straw = {
+		id = "Straw", displayName = "Straw Bedding", description = "Light, breathable. Favored by cap-tier mushrooms.",
+		category = "substrates", stackable = true, maxStack = 99, tradable = true, droppable = false, baseSellPrice = 5,
+	},
+	Dung = {
+		id = "Dung", displayName = "Composted Dung", description = "Rich nitrogen mix for hungry uncommons.",
+		category = "substrates", stackable = true, maxStack = 99, tradable = true, droppable = false, baseSellPrice = 12,
+	},
+	Hardwood = {
+		id = "Hardwood", displayName = "Hardwood Chips", description = "Lattice and shelf species prefer dense wood.",
+		category = "substrates", stackable = true, maxStack = 99, tradable = true, droppable = false, baseSellPrice = 18,
+	},
+	Peat = {
+		id = "Peat", displayName = "Bog Peat", description = "Acidic. Misty Hollow's water-loving species thrive here.",
+		category = "substrates", stackable = true, maxStack = 99, tradable = true, droppable = false, baseSellPrice = 25,
+	},
+	MagicalLoam = {
+		id = "MagicalLoam", displayName = "Magical Loam", description = "Boosts rare-variant chance. Whisper says it sings at night.",
+		category = "substrates", stackable = true, maxStack = 99, tradable = true, droppable = false, baseSellPrice = 200,
+	},
+
+	-- Spore samples (Phase 2). Sold by SporeMerchant. Currently INERT — Planting
+	-- does not yet consume spores from inventory; spore items sit decorative
+	-- until cultivation depth ships and Planting reads inventoryByCategory.spores.
+	BrownCapSpore = {
+		id = "BrownCapSpore", displayName = "Brown Cap Spore", description = "Common species. Grows in any substrate.",
+		category = "spores", stackable = true, maxStack = 50, tradable = true, droppable = false, baseSellPrice = 8,
+		speciesId = "BrownCap",
+	},
+	FairyCupSpore = {
+		id = "FairyCupSpore", displayName = "Fairy Cup Spore", description = "Common species. Prefers damp substrate.",
+		category = "spores", stackable = true, maxStack = 50, tradable = true, droppable = false, baseSellPrice = 12,
+		speciesId = "FairyCup",
+	},
+	InkpotSpore = {
+		id = "InkpotSpore", displayName = "Inkpot Spore", description = "Uncommon. Hardwood substrate only.",
+		category = "spores", stackable = true, maxStack = 50, tradable = true, droppable = false, baseSellPrice = 40,
+		speciesId = "Inkpot",
+	},
 }
 
 -- Biomes -----------------------------------------------------------------------
@@ -224,7 +332,8 @@ Constants.BIOMES = {
 		npcPositions = {
 			travelCoordinator = Vector3.new(-15, 0, 0),
 			forestWitch       = Vector3.new(85, 2, -5),    -- inside cave chamber
-			substrateMerchant = Vector3.new(15, 0, 0),
+			substrateDealer   = Vector3.new(15, 2, -8),
+			sporeMerchant     = Vector3.new(-12, 2, -8),
 		},
 		wildSpawnArea     = "WildSpawnArea_StarterGlade",
 		wildSpawnTable    = {
@@ -306,6 +415,86 @@ Constants.SAVE = {
 	autosaveInterval = 60,
 }
 
+-- UI palette + tokens -----------------------------------------------------------
+-- Source of truth for all client UI colors, typography, motion, and spacing.
+-- Spec: docs/specs/visual-language.md. Every new client UI module reads from
+-- this table; never hardcode hex codes in UI code. Pre-Alpha UIs (Journal,
+-- Brew, Potion controllers) predate this token system and use their own
+-- inline values — they get migrated as their next polish pass touches them.
+Constants.UI = {
+	color = {
+		forest = {
+			ink  = Color3.fromHex("#2B3A2E"),
+			deep = Color3.fromHex("#3F5538"),
+			mid  = Color3.fromHex("#4A6440"),
+			sage = Color3.fromHex("#8FA478"),
+			mist = Color3.fromHex("#C9D1B8"),
+		},
+		parchment = {
+			cream = Color3.fromHex("#F4ECDC"),
+			mist  = Color3.fromHex("#EDE3D0"),
+			bone  = Color3.fromHex("#FAF6EB"),
+		},
+		bark = {
+			warm = Color3.fromHex("#6B4F3A"),
+			dark = Color3.fromHex("#3E2D22"),
+		},
+		text = {
+			primary   = Color3.fromHex("#2B3A2E"),
+			secondary = Color3.fromHex("#6B6557"),
+			muted     = Color3.fromHex("#9A8F7E"),
+			onAccent  = Color3.fromHex("#FAF6EB"),
+		},
+		surface = {
+			bg        = Color3.fromHex("#F4ECDC"),
+			panel     = Color3.fromHex("#FAF6EB"),
+			recessed  = Color3.fromHex("#EDE3D0"),
+			divider   = Color3.fromHex("#D4C9B0"),
+		},
+		accent = {
+			primary      = Color3.fromHex("#4A6440"),
+			primaryHover = Color3.fromHex("#3F5538"),
+			gold         = Color3.fromHex("#C9A04E"),
+			amber        = Color3.fromHex("#D9A85C"),
+			duskBlue     = Color3.fromHex("#6B8FA8"),
+			barnRed      = Color3.fromHex("#B85F5F"),
+		},
+		state = {
+			success = Color3.fromHex("#6B8E5C"),
+			warning = Color3.fromHex("#D9A85C"),
+			error   = Color3.fromHex("#B85F5F"),
+			info    = Color3.fromHex("#6B8FA8"),
+		},
+	},
+	rarity = {
+		Common    = Color3.fromHex("#8FA478"),
+		Uncommon  = Color3.fromHex("#6B8FA8"),
+		Rare      = Color3.fromHex("#B07AA1"),
+		Epic      = Color3.fromHex("#D9866A"),
+		Legendary = Color3.fromHex("#E5C547"),
+		-- Mythic is a gradient — UI code samples both endpoints when needed.
+		MythicFrom = Color3.fromHex("#9C68D4"),
+		MythicTo   = Color3.fromHex("#5C9BD5"),
+	},
+	-- NOTE: cottagecore-target fonts (Merriweather / Nunito / Inconsolata
+	-- per docs/specs/visual-language.md) aren't all in Roblox's Enum.Font
+	-- on every Studio build. Shipping with safe Enum.Font values for now;
+	-- swap to the target fonts via Font.new(asset_id, weight, style) when
+	-- typography polish lands.
+	typography = {
+		display = { font = Enum.Font.GothamBold,   size = 28 },
+		heading = { font = Enum.Font.GothamBold,   size = 18 },
+		body    = { font = Enum.Font.Gotham,       size = 14 },
+		caption = { font = Enum.Font.Gotham,       size = 12 },
+		numeric = { font = Enum.Font.Code,         size = 16 }, -- Code is monospaced; stand-in for Inconsolata
+		button  = { font = Enum.Font.GothamBold,   size = 16 },
+	},
+	motion = { micro = 0.08, short = 0.20, medium = 0.35, long = 0.60, discovery = 1.20 },
+	space  = { xs = 4, sm = 8, md = 16, lg = 24, xl = 32, xxl = 48 },
+	radius = { card = 12, button = 8, chip = 4 },
+	tapTargetMin = 44,
+}
+
 -- RemoteEvent / RemoteFunction names ------------------------------------------
 -- These are referenced from both client and server so they live here as
 -- string constants instead of magic strings scattered through the codebase.
@@ -313,8 +502,35 @@ Constants.REMOTES = {
 	HarvestMushroom = "HarvestMushroom",
 	PlantPatch = "PlantPatch",
 	PlantSpecies = "PlantSpecies",
-	SellInventory = "SellInventory",
-	SellCompleted = "SellCompleted",
+	-- Shop / merchants (Phase 2). Pre-Alpha SellInventory + SellCompleted
+	-- removed — sales now route through the Shop UI.
+	OpenShop = "OpenShop",
+	BuyFromMerchant = "BuyFromMerchant",
+	SellToMerchant = "SellToMerchant",
+	ShopTransactionCompleted = "ShopTransactionCompleted",
+	-- Dialogue (Phase 2). Server tells client to open dialogue UI; client
+	-- fires DialogueAction back when the player picks a response that has
+	-- a side effect.
+	OpenDialogue = "OpenDialogue",
+	DialogueAction = "DialogueAction",
+	-- Quest lifecycle (Phase 2). AcceptQuest/TurnInQuest/AbandonQuest are
+	-- usually fired by dialogue actions but exposed as direct remotes for
+	-- HUD-driven flows + future side quests with non-NPC entry points.
+	AcceptQuest = "AcceptQuest",
+	TurnInQuest = "TurnInQuest",
+	AbandonQuest = "AbandonQuest",
+	-- Trading Post (Phase 2). Two-player synchronized trade with anti-scam
+	-- lock + countdown + confirm flow. See docs/specs/trading-post.md.
+	RequestTrade = "RequestTrade",
+	TradeRequestReceived = "TradeRequestReceived",
+	RespondToTradeRequest = "RespondToTradeRequest",
+	TradeSessionStarted = "TradeSessionStarted",
+	UpdateTradeOffer = "UpdateTradeOffer",
+	TradeOfferUpdated = "TradeOfferUpdated",
+	LockTradeOffer = "LockTradeOffer",
+	ConfirmTrade = "ConfirmTrade",
+	CancelTrade = "CancelTrade",
+	TradeCompleted = "TradeCompleted",
 	Brew = "Brew",
 	BrewCompleted = "BrewCompleted",
 	ConsumePotion = "ConsumePotion",

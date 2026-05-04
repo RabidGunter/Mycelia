@@ -23,6 +23,7 @@ local Potions = require(ReplicatedStorage.Shared.Potions)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Inventory = require(ServerScriptService.Server.Inventory)
 local PlayerData = require(ServerScriptService.Server.PlayerData)
+local Quest = require(ServerScriptService.Server.Quest)
 
 local Brewing = {}
 
@@ -105,6 +106,13 @@ local function attemptBrew(player: Player, method: string, ingredientIds: { stri
 	end
 
 	notify(player, potionId ~= nil, potionId, isNewDiscovery)
+
+	-- Quest hooks: tutorial quest 4 (the_cauldron_calls) fires on every
+	-- brew attempt; quest 5 (a_recipe_discovered) fires only on success.
+	Quest.onEvent(player, "brew_attempt", {})
+	if potionId then
+		Quest.onEvent(player, "brew_success", { potionId = potionId, isNewDiscovery = isNewDiscovery })
+	end
 end
 
 function Brewing.start()

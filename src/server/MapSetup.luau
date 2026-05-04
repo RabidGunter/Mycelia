@@ -26,9 +26,11 @@
 --                be CanCollide=false and Transparency=1 (it's just an
 --                invisible volume the spawner picks random points inside).
 --
---   WitchStall   Any instance in Workspace named "WitchStall" containing
---                a ProximityPrompt named "SellPrompt" anywhere in its
---                descendants.
+--   WitchStall   Any BasePart in Workspace named "WitchStall" with the
+--                attribute `merchantId = "ForestWitch"` and a ProximityPrompt
+--                anywhere in its descendants. Shop.luau dispatches by the
+--                merchantId attribute, not the prompt name, so the prompt
+--                can be named anything.
 --
 --   Cauldron     Any instance in Workspace named "Cauldron" containing
 --                a ProximityPrompt named "BrewPrompt" anywhere in its
@@ -147,8 +149,19 @@ end
 -- ---------- Witch stall --------------------------------------------------
 
 local function buildWitchStall()
-	if Workspace:FindFirstChild("WitchStall") then
-		return    -- using hand-built (the user's responsibility to add a SellPrompt)
+	local existing = Workspace:FindFirstChild("WitchStall")
+	if existing and existing:IsA("BasePart") then
+		-- Hand-built: respect the user's prompt setup but ensure the dialogue
+		-- attribute is stamped so Dialogue.luau can route prompt triggers.
+		-- Strip any legacy merchantId stamp from earlier handoffs — the witch
+		-- now goes through dialogue, which has its own "Sell" response.
+		if existing:GetAttribute("dialogueId") == nil then
+			existing:SetAttribute("dialogueId", "ForestWitch")
+		end
+		if existing:GetAttribute("merchantId") ~= nil then
+			existing:SetAttribute("merchantId", nil)
+		end
+		return
 	end
 	-- Stand-in for the Forest Witch NPC. Replace with a real character
 	-- model in a later milestone. Lives inside the cave chamber that
@@ -160,16 +173,222 @@ local function buildWitchStall()
 		Color3.fromRGB(120, 60, 140),
 		Enum.Material.Wood
 	)
+	-- Phase 2 dialogue: the witch greets the player before opening the shop.
+	-- The "Sell mushrooms" response in Dialogues.ForestWitch routes to
+	-- OpenShop with npcId="ForestWitch".
+	stall:SetAttribute("dialogueId", "ForestWitch")
 	stall.Parent = Workspace
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "SellPrompt"
-	prompt.ActionText = "Sell mushrooms"
+	prompt.Name = "DialoguePrompt"
+	prompt.ActionText = "Talk to Witch"
 	prompt.ObjectText = "Forest Witch"
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = stall
+end
+
+-- ---------- Secondary merchants -----------------------------------------
+-- Phase 2 Shop UI added Substrate Dealer + Spore Merchant. They live near
+-- the spawn pad so the tutorial path naturally walks past them. Both share
+-- the same anchor pattern as the witch stall: BasePart with merchantId
+-- attribute + ProximityPrompt. Shop.luau dispatches by attribute, so these
+-- prompts can be named anything; we use generic "ShopPrompt" for symmetry.
+
+local function buildMerchantStall(name: string, merchantId: string, position: Vector3, color: Color3, actionText: string, objectText: string)
+	local existing = Workspace:FindFirstChild(name)
+	if existing and existing:IsA("BasePart") then
+		if existing:GetAttribute("merchantId") == nil then
+			existing:SetAttribute("merchantId", merchantId)
+		end
+		return existing
+	end
+	local stall = makePart(name, Vector3.new(3, 3, 3), position, color, Enum.Material.Wood)
+	stall:SetAttribute("merchantId", merchantId)
+	stall.Parent = Workspace
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "ShopPrompt"
+	prompt.ActionText = actionText
+	prompt.ObjectText = objectText
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = stall
+	return stall
+end
+
+local function buildSubstrateDealer()
+	-- Brown crate near spawn for the substrate dealer. Wood + warm earth tone
+	-- nods to the cottagecore palette; visual upgrade to a real NPC model
+	-- happens in a future polish pass.
+	buildMerchantStall(
+		"SubstrateDealerStall",
+		"SubstrateDealer",
+		Vector3.new(15, 2.5, -8),
+		Color3.fromRGB(110, 80, 55),
+		"Talk to Dealer",
+		"Substrate Dealer"
+	)
+end
+
+local function buildSporeMerchant()
+	-- Mossy green box for the spore merchant. Visual hook = "this person sells
+	-- mushroom things." Same pattern as substrate dealer.
+	buildMerchantStall(
+		"SporeMerchantStall",
+		"SporeMerchant",
+		Vector3.new(-12, 2.5, -8),
+		Color3.fromRGB(85, 115, 70),
+		"Talk to Merchant",
+		"Spore Merchant"
+	)
+end
+
+-- Generic dialogue-only NPC builder. Same anchor-Part-plus-prompt pattern
+-- as merchants but tagged with `dialogueId` instead of `merchantId` so
+-- Dialogue.luau handles the prompt trigger.
+local function buildDialogueNpc(name, dialogueId, position, color, actionText, objectText)
+	local existing = Workspace:FindFirstChild(name)
+	if existing and existing:IsA("BasePart") then
+		if existing:GetAttribute("dialogueId") == nil then
+			existing:SetAttribute("dialogueId", dialogueId)
+		end
+		return existing
+	end
+	local anchor = makePart(name, Vector3.new(2.5, 5, 2.5), position, color, Enum.Material.SmoothPlastic)
+	anchor:SetAttribute("dialogueId", dialogueId)
+	anchor.Parent = Workspace
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "DialoguePrompt"
+	prompt.ActionText = actionText
+	prompt.ObjectText = objectText
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = anchor
+	return anchor
+end
+
+-- Phase 2 Gardener Coach — the tutorial guide. Hands out the 5-quest
+-- tutorial sequence via the dialogue system. Anchored on the spawn pad's
+-- north side so a fresh player walks past him on first spawn.
+local function buildGardenerCoach()
+	local existing = Workspace:FindFirstChild("GardenerCoachAnchor")
+	if existing and existing:IsA("BasePart") then
+		if existing:GetAttribute("dialogueId") == nil then
+			existing:SetAttribute("dialogueId", "GardenerCoach")
+		end
+		return
+	end
+	local anchor = makePart(
+		"GardenerCoachAnchor",
+		Vector3.new(2.5, 5, 2.5),
+		Vector3.new(0, 3, 8),                    -- just north of spawn pad
+		Color3.fromRGB(180, 150, 100),            -- warm tan placeholder
+		Enum.Material.SmoothPlastic
+	)
+	anchor:SetAttribute("dialogueId", "GardenerCoach")
+	anchor.Parent = Workspace
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "DialoguePrompt"
+	prompt.ActionText = "Talk to Coach"
+	prompt.ObjectText = "Gardener Coach"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = anchor
+end
+
+-- Phase 2 launch dialogue NPCs (lore-only + travel-bound). Each is a
+-- placeholder colored Part anchored at a sensible spot in the Starter Glade;
+-- real character models drop in during a polish pass.
+
+local function buildTravelCoordinator()
+	-- Reserved position from Constants.BIOMES.StarterGlade.npcPositions.
+	-- Slate-grey to evoke "trail marker / way-finder".
+	buildDialogueNpc(
+		"TravelCoordinatorAnchor",
+		"TravelCoordinator",
+		Vector3.new(-15, 2.5, 0),
+		Color3.fromRGB(110, 120, 135),
+		"Talk to Coordinator",
+		"Travel Coordinator"
+	)
+end
+
+local function buildOldHermit()
+	-- Tucked at the western edge of the wild spawn area, between the trees
+	-- and the pond. Mossy green-brown — a hermit who's been here a while.
+	buildDialogueNpc(
+		"OldHermitAnchor",
+		"OldHermit",
+		Vector3.new(-40, 2.5, -25),
+		Color3.fromRGB(85, 90, 70),
+		"Talk to Hermit",
+		"Old Hermit"
+	)
+end
+
+local function buildWanderingAlchemist()
+	-- Hangs near the cauldron, where the witch tolerates her. Warm purple
+	-- to read as "alchemist" alongside the witch's stall purple.
+	buildDialogueNpc(
+		"WanderingAlchemistAnchor",
+		"WanderingAlchemist",
+		Vector3.new(78, 2.5, 8),
+		Color3.fromRGB(150, 110, 175),
+		"Talk to Alchemist",
+		"Wandering Alchemist"
+	)
+end
+
+-- Phase 2 Trading Post placeholder — a simple wooden stand near the spawn
+-- pad as a navigation hint. The real Trading Post (zone with portals from
+-- every biome, trade-stand props, ambient music) lands in a later commit.
+-- Trade backend is reachable from anywhere in the world for now via the
+-- HUD "Trade" button, so this Part is purely visual.
+local function buildTradingPostMarker()
+	if Workspace:FindFirstChild("TradingPostMarker") then return end
+	local marker = makePart(
+		"TradingPostMarker",
+		Vector3.new(6, 0.5, 6),
+		Vector3.new(25, 0.5, 0),
+		Color3.fromRGB(180, 150, 100),
+		Enum.Material.Wood
+	)
+	marker.Parent = Workspace
+	-- Sign post on top.
+	local post = makePart(
+		"TradingPostSign",
+		Vector3.new(0.4, 4, 0.4),
+		Vector3.new(25, 2.75, 0),
+		Color3.fromRGB(110, 80, 55),
+		Enum.Material.Wood
+	)
+	post.Parent = marker
+	local sign = makePart(
+		"TradingPostBoard",
+		Vector3.new(3, 1.2, 0.2),
+		Vector3.new(25, 4.5, 0),
+		Color3.fromRGB(110, 80, 55),
+		Enum.Material.Wood
+	)
+	sign.Parent = marker
+	local label = Instance.new("SurfaceGui")
+	label.Face = Enum.NormalId.Front
+	label.LightInfluence = 0
+	label.Parent = sign
+	local txt = Instance.new("TextLabel")
+	txt.Size = UDim2.fromScale(1, 1)
+	txt.BackgroundTransparency = 1
+	txt.Text = "Trading Post"
+	txt.TextColor3 = Color3.fromRGB(245, 235, 215)
+	txt.TextScaled = true
+	txt.Font = Enum.Font.GothamBold
+	txt.Parent = label
 end
 
 -- ---------- Cauldron ------------------------------------------------------
@@ -339,6 +558,13 @@ function MapSetup.build(plotCount: number): { wildSpawnArea: BasePart, plots: { 
 	buildGround()
 	buildSpawnPad()
 	buildWitchStall()
+	buildSubstrateDealer()
+	buildSporeMerchant()
+	buildGardenerCoach()
+	buildTravelCoordinator()
+	buildOldHermit()
+	buildWanderingAlchemist()
+	buildTradingPostMarker()
 	buildCauldron()
 	local wildSpawnArea = buildWildSpawnArea()
 	local plots = buildPlots(plotCount)

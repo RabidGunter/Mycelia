@@ -78,10 +78,10 @@ This roadmap **pairs with the Scripting Order Request PDF** — the PDF is the d
 *Goal: trading economy lights up; quests provide structure; species count doubles.*
 
 ### Trading Post (the longevity engine)
-- [ ] **(L) Trade UI + flow.** Two-player synchronized modal, offering slots, coin offering, Offer/Accept/Deny buttons.
-- [ ] **(L) Atomic trade execution server-side.** Idempotent operation IDs, both-sides-or-neither commits, rollback on crash.
-- [ ] **(M) Anti-duping protections.** Per-player rate limits, inventory mutation lock during trade, audit log of every trade to a separate DataStore.
-- [ ] **(M) Trading Post location** — physical place in the central biome with travel portals from all biomes.
+- [x] **(L) Trade UI + flow.** ✓ 2026-05-03 — `src/client/TradeUI.client.luau`. Two-panel modal (your offer / their offer), 6-slot grid + coin input, item picker submodal, lock + 5s countdown + confirm flow per Adopt Me anti-scam UX. Player picker (HUD button) + incoming-request toast included.
+- [x] **(L) Atomic trade execution server-side.** ✓ 2026-05-03 — `src/server/Trade.luau`. Validate-before-mutate + snapshot-rollback on partial failure. Re-validates both offers at confirmation time (items/coins may have moved during negotiation).
+- [~] **(M) Anti-duping protections.** ✓ Audit log to `MyceliaAuditLog_v1` DataStore (separate from player saves). ✓ Confirmation-time re-validation. ⬜ Per-remote rate limits and inventory mutation lock during trade are deferred — confirmation re-validation covers the dupe path; rate limits prevent spam not duping.
+- [~] **(M) Trading Post location** — placeholder wood marker Part at (25, _, 0) with surface text. Real zone (with travel portals from all biomes) is a follow-up; trade currently works from anywhere via the HUD "Trade" button.
 
 ### Player Stalls
 - [ ] **(L) Stall rental flow.** Stall Manager NPC, daily fee, stall Model assigned to player.
@@ -97,20 +97,20 @@ This roadmap **pairs with the Scripting Order Request PDF** — the PDF is the d
 - [ ] **(S) Lobby chat** — private channel per party.
 
 ### Quest system
-- [ ] **(L) Quest data structure** in `Quests.lua` (id, title, description, NPC, objectives, rewards, prerequisites, repeatable).
-- [ ] **(L) Quest Journal UI** — Active / Completed / Available tabs.
-- [ ] **(M) Tutorial 5-quest sequence** with Gardener Coach NPC at spawn. Teaches harvest → plant → sell → brew → discover.
-- [ ] **(S) HUD-tracked quest widget** — pinned objective summary top-right.
+- [x] **(L) Quest data structure** in `Quests.luau` (id, title, description, NPC, objectives, rewards, prerequisites, repeatable). ✓ 2026-05-03 — pure-data + 7 OBJECTIVE_KINDS + pure helpers (`canAccept`, `canTurnIn`, `objectiveMatches`, `applyEvent`).
+- [x] **(L) Quest Journal UI** — Active / Completed / Available tabs. ✓ 2026-05-03 — `src/client/QuestController.client.luau`.
+- [x] **(M) Tutorial 5-quest sequence** with Gardener Coach NPC at spawn. Teaches harvest → plant → sell → brew → discover. ✓ 2026-05-03 — 5 chained quests in `Quests.byId`, Gardener Coach dialogue tree owns all 5 start/turn-in responses with `condition` filtering.
+- [x] **(S) HUD-tracked quest widget** — pinned objective summary top-right. ✓ 2026-05-03 — bundled into QuestController.
 
 ### NPC dialogue system
-- [ ] **(L) Dialogue tree data structure** per NPC. Lines + response options + side effects (open shop, give quest, give item).
-- [ ] **(M) Dialogue UI** — chat-bubble with portrait, Continue / Response options, lockout on critical lines.
-- [ ] **(M) Wire up the major launch NPCs** — Forest Witch, Old Hermit, Wandering Alchemist, Spirit Speaker, Travel Coordinator, Expedition Coordinator, Trading Post Manager, Gardener Coach.
+- [x] **(L) Dialogue tree data structure** per NPC. ✓ 2026-05-03 — `src/shared/Dialogues.luau` indexed by `[npcId][nodeId]`. Pure-data trees with `next` (navigation) or `action` (server side effect: openShop / endDialogue) per response. Schema + integrity tests in [DialoguesSpec.luau](../src/server/Tests/DialoguesSpec.luau).
+- [x] **(M) Dialogue UI** — ✓ 2026-05-03 — `src/client/DialogueController.client.luau`. Bottom-anchored card, portrait + speakerName header, body line, scrollable response list, mobile-first 44pt buttons. Lockout-on-critical-lines is a Phase 3 polish item (intentionally deferred).
+- [~] **Wire up the major launch NPCs** — 5 of 8 shipped as of 2026-05-03: Forest Witch, Gardener Coach (tutorial guide), Travel Coordinator (player-facing wrapper for the existing Travel.luau backend), Old Hermit (lore), Wandering Alchemist (lore + brewing tips). Pending: Spirit Speaker, Expedition Coordinator, Trading Post Manager — each tied to a system that hasn't shipped yet (Spirits dialogue, Expeditions, Trading Post). Adding them is mechanical once those land.
 
 ### Shop UI (replaces witch auto-sell)
-- [ ] **(L) Shared shop UI component** with Sell / Buy tabs. Used by all merchants.
-- [ ] **(M) Per-merchant config** in `Constants.SHOPS`: which categories they buy, which items they sell, price modifiers.
-- [ ] **(M) Wire up secondary merchants** — Substrate, Spore, Spirit Food, Cosmetic, Decoration.
+- [x] **(L) Shared shop UI component** with Sell / Buy tabs. Used by all merchants. ✓ 2026-05-02 — `src/client/ShopUI.client.luau` shipped.
+- [x] **(M) Per-merchant config** in `Constants.MERCHANTS`: which categories they buy, which items they sell, price modifiers, rep gates. ✓ 2026-05-02 — schema in [docs/specs/shop-ui.md](specs/shop-ui.md). ForestWitch entry migrated; 5 secondary merchants reserved as future tasks below.
+- [~] **(M) Wire up secondary merchants** — partial: Substrate Dealer + Spore Merchant shipped 2026-05-03 (6 substrates, 3 spore samples). Spirit Food + Cosmetic + Decoration vendors are remaining (~30 min each — pattern is locked). Items are inert until cultivation depth lands; see HANDOFF for the schema-ready / behavior-deferred caveat.
 
 ### Content
 - [ ] **(XL) Add 15+ new species** to reach 30+ across 5 tiers (add Legendary tier here). Mostly content/data work — `Species.lua` entries plus visual variants in `WildSpawn.SPECIES_VISUALS`.

@@ -3,7 +3,8 @@
 --   * success        -> "Brewed: <Potion Name>"        (gold)
 --   * else (fizzle)  -> "The brew fizzles..."          (purple/grey)
 --
--- Same float-up-and-fade animation pattern as SellToast.
+-- Float-up-and-fade animation pattern; matches the in-Shop toast in
+-- ShopUI.client.luau (the Pre-Alpha SellToast was rolled into that UI).
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")

@@ -87,26 +87,9 @@ The error-code-per-rule pattern applies to every other remote handler in this do
 
 **On failure:** silent no-op server-side; fire `PlantCompleted` with `success=false, code=<reason>` so client UI can show "Not enough coins" etc.
 
-### `SellInventory` — RESERVED
+### `SellInventory` / `SellCompleted` — REMOVED in Phase 2
 
-Currently unused. Sell action runs through ProximityPromptService server-side. Phase 1 replaces with the full Sell tab (see `Sell` remote below) but keeps `SellInventory` reserved as the legacy auto-sell-everything fast-path. Consider removing in Phase 1 cleanup.
-
-### `SellCompleted` (S → C)
-
-Fires when a sell transaction completes.
-
-**Args:** `payout: number` — coins gained.
-
-**Client handler:** shows the `+N coins` toast.
-
-**Phase 1 changes:** `payout` argument expands to a struct so the toast can say "+50 coins (3 BrownCap, 1 LatticeVeil)" — better feedback.
-
-```
-{
-    payout: number,
-    items: { [itemId] = count }    -- what was sold
-}
-```
+The Pre-Alpha auto-sell remotes were superseded by the Shop UI. See `OpenShop` / `SellToMerchant` / `ShopTransactionCompleted` below for the replacement flow.
 
 ### `Brew` (C → S)
 
@@ -227,25 +210,32 @@ Move a spirit between active roster and inventory.
 
 **Validation:** standard ownership + capacity checks.
 
+### `OpenShop` (S → C)
+
+Server tells the client to open the Shop UI for a specific merchant. Fires when the player triggers a ProximityPrompt parented to a Part with attribute `merchantId = "<npcId>"` (set by MapSetup or hand-built NPCs).
+
+**Args:** `{ npcId: string }`. Client looks up `Constants.MERCHANTS[npcId]` for the rest of the merchant config (it's already replicated via shared Constants).
+
+**Why server-fired:** keeps the prompt-trigger authoritative on the server (clients can't bypass merchant routing), and lets future systems (rep gates, "shop closed" hours) suppress the event before the UI opens.
+
 ### `BuyFromMerchant` (C → S)
 
-Buy item from any merchant NPC's shop.
+Buy items from a merchant. Atomic — either every line item lands or none do.
 
-**Args:** `(npcId: string, itemId: string, quantity: number)`.
+**Args:** `(npcId: string, items: { [itemId] = quantity })`.
 
 **Validation:**
-1. NPC exists and is a merchant.
-2. Player is within talk range of NPC.
-3. Merchant config (in `Constants.MERCHANTS[npcId]`) lists `itemId` for sale.
-4. Player has `quantity * unitPrice` coins.
-5. Resulting inventory wouldn't exceed slot/stack caps.
-6. (For gated items) Player meets reputation gate with this NPC.
+1. NPC exists in `Constants.MERCHANTS`.
+2. Player is within `merchant.talkRange` of NPC anchor.
+3. Every itemId is listed in `merchant.itemsForSale`.
+4. Player has `sum(quantity * listing.unitPrice)` coins.
+5. Player meets `merchant.repGate` and any per-item `repGate`.
 
 **On success:**
 - Deduct coins.
-- Add item × quantity to inventory.
-- Apply rep gain (small bonus per coin spent).
-- Fire `ShopTransactionCompleted` (S → C).
+- Add each item × quantity to `data.inventoryByCategory[listing.category]`.
+- Apply rep gain via `Reputation.add(player, merchant.reputationKey, total * merchant.repPerCoin)`.
+- Fire `ShopTransactionCompleted` (S → C) with full breakdown.
 
 ### `SellToMerchant` (C → S)
 

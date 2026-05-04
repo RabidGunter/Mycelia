@@ -96,11 +96,13 @@ For longer planning-only sessions, also note "no code changes" so the resumer kn
 
 ---
 
-## Phase 1 status (current)
+## Phase status (current)
 
-All five Phase 1 architectural questions are resolved (see `docs/ROADMAP.md` "Open questions"). Phase 1 specs in `docs/specs/` cover species data, save schema v3, every remote, brewing depth, spirits, and the Misty Hollow biome. Implementation should be largely mechanical execution against the specs.
+**Phase 1 complete (2026-05-02)** — 166 tests passing, all six task groups verified in Studio. ProfileService migration, save schema v3, 20 brewing recipes, 10 potion effect kinds, Forest Spirits + PassiveBonuses, Biome architecture + Misty Hollow + Travel.
 
-When new questions surface during Phase 1 implementation, write them up as a new ADR (don't make decisions silently in code).
+**Phase 2 in progress.** First milestone — Shop UI replacing the witch auto-sell — shipped 2026-05-02. Visual language locked in [docs/specs/visual-language.md](docs/specs/visual-language.md). See `docs/ROADMAP.md` "Phase 2" for remaining tasks; the natural next pickups are the Quest system, NPC dialogue, or secondary merchants.
+
+When new questions surface during Phase 2 implementation, write them up as a new ADR (don't make decisions silently in code).
 
 ---
 

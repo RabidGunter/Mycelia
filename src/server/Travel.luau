@@ -96,6 +96,13 @@ local function handleTravelRequest(player: Player, biomeId: any)
 	end
 end
 
+-- Public wrapper: triggered by either the RequestBiomeTravel remote OR a
+-- dialogue action (Travel Coordinator NPC). Both paths share identical
+-- validation — performTravel is the single source of truth.
+function Travel.requestTravel(player: Player, biomeId: string): (boolean, string?)
+	return performTravel(player, biomeId)
+end
+
 function Travel.start()
 	Remotes.get(Constants.REMOTES.RequestBiomeTravel).OnServerEvent:Connect(handleTravelRequest)
 

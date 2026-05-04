@@ -33,6 +33,7 @@ local Constants = require(ReplicatedStorage.Shared.Constants)
 local Species = require(ReplicatedStorage.Shared.Species)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local PlayerData = require(ServerScriptService.Server.PlayerData)
+local Quest = require(ServerScriptService.Server.Quest)
 local PotionEffects = require(ServerScriptService.Server.PotionEffects)
 local PassiveBonuses = require(ServerScriptService.Server.PassiveBonuses)
 
@@ -125,6 +126,8 @@ local function attemptPlantSpecies(player: Player, plot: Instance, speciesId: st
 	setPromptEnabled(plot, "PlantPrompt", false)
 	setPromptEnabled(plot, "HarvestPrompt", false)
 	setVisualState(plot, "Growing")
+	-- Quest hook: tutorial quest 2 (a_place_to_grow) tracks this.
+	Quest.onEvent(player, "plant_species", { speciesId = speciesId })
 	return true
 end
 
