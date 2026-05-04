@@ -228,11 +228,11 @@ return function()
 			TestKit.eq(Shop.canBuy(sporer, "InkpotSpore"), true)
 		end)
 		TestKit.test("multi-spore Buy totals correctly", function()
-			-- 2 BrownCapSpore (16) + 1 InkpotSpore (60) = 76
+			-- 2 BrownCapSpore (2 * 10 = 20) + 1 InkpotSpore (1 * 60 = 60) = 80
 			local ok, _, _, total =
 				Shop.validateBuy(sporer, { BrownCapSpore = 2, InkpotSpore = 1 }, 100, {})
 			TestKit.eq(ok, true)
-			TestKit.eq(total, 76)
+			TestKit.eq(total, 80)
 		end)
 	end)
 

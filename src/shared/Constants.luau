@@ -99,6 +99,72 @@ Constants.MERCHANTS = {
 	},
 	-- Future Phase 2 merchants:
 	--   SpiritFood, Cosmetic, DecorationVendor.
+
+	-- Stall Manager NPC. Not a buy/sell merchant — entry exists so Dialogue.luau
+	-- can resolve dialogueId-vs-merchantId routing and any future repPerCoin /
+	-- repGate hooks have a config home. The actual stall functionality (rental,
+	-- listing, browse) goes through the Stall.luau remotes.
+	StallManager = {
+		displayName  = "Stall Manager",
+		description  = "Runs the featured row in the Trading Post; mails out your sale proceeds.",
+		talkRange    = 14,
+		buyCategories = {},
+		buyMultiplier = 0,
+		itemsForSale  = {},
+		reputationKey = "StallManager",
+		repPerCoin    = 0.001,
+		repGate       = 0,
+	},
+}
+
+-- Player Stalls (Phase 2) ------------------------------------------------------
+-- Tunables for the Player Stalls system. See docs/specs/player-stalls.md and
+-- .planning/phases/02-closed-beta-social-systems-content/02-CONTEXT.md (D-06..D-21).
+Constants.STALL = {
+	-- D-06: listing slots per stall. Gamepass +4 hook designed-in but unwired in v1.
+	slotCount               = 4,
+	-- D-07: listings auto-expire after this many seconds (48h). Items return to mailbox.
+	listingExpirySeconds    = 48 * 3600,
+	-- D-08: featured row in the Trading Post zone.
+	featuredSlotCount       = 12,
+	featuredFee             = 200,                          -- coins per 24h rental
+	featuredRentSeconds     = 24 * 3600,
+	featuredCapPerAccount   = 1,
+	-- D-09: Cottages zone with an 8x8 grid of plot anchors (64 tiles total).
+	cottagesZoneOrigin      = Vector3.new(-300, 0, 0),      -- west of spawn
+	plotTileSize            = 16,                           -- studs per tile side
+	plotGridSize            = 8,                            -- 8x8 = 64 tiles
+	plotGridSpacing         = 24,                           -- 16-stud tile + 8-stud gap
+	-- D-10: price bounds.
+	minPrice                = 1,
+	maxPrice                = 1e9,
+	-- D-11: mailbox cap (unique item ids; coins uncapped).
+	mailboxItemIdCap        = 100,
+	-- CD-2 + CD-6: sweeper tick + offline-seller registry TTL.
+	expirySweeperIntervalSeconds = 60,
+	knownSellersTtlSeconds  = 7 * 24 * 3600,
+	-- D-21: per-remote rate-limit intervals (seconds). Used by Stall.start
+	-- handlers via RateLimit.check.
+	rateLimits = {
+		CreateListing    = 3,
+		BuyListing       = 1,
+		CancelListing    = 3,
+		RentFeaturedSlot = 60,
+		ClaimMailbox     = 10,
+		BrowseDirectory  = 2,
+	},
+	-- CD-4: featured row positions in the Trading Post zone. The TP marker
+	-- sits at (25, 0.5, 0) per MapSetup.luau; lay the 12 stalls in 2 rows of 6
+	-- just south of it so foot traffic walks past on the way to spawn.
+	featuredRowOrigin       = Vector3.new(25, 0, 14),
+	featuredRowOffsets      = {
+		Vector3.new(-15, 0, 0), Vector3.new( -9, 0, 0), Vector3.new(-3, 0, 0),
+		Vector3.new(  3, 0, 0), Vector3.new(  9, 0, 0), Vector3.new(15, 0, 0),
+		Vector3.new(-15, 0, 6), Vector3.new( -9, 0, 6), Vector3.new(-3, 0, 6),
+		Vector3.new(  3, 0, 6), Vector3.new(  9, 0, 6), Vector3.new(15, 0, 6),
+	},
+	-- Stall Manager NPC anchor position. Sits at the head of the featured row.
+	stallManagerPosition    = Vector3.new(25, 2.5, 8),
 }
 
 -- Movement ---------------------------------------------------------------------
@@ -531,6 +597,20 @@ Constants.REMOTES = {
 	ConfirmTrade = "ConfirmTrade",
 	CancelTrade = "CancelTrade",
 	TradeCompleted = "TradeCompleted",
+	-- Player Stalls (Phase 2). See docs/specs/player-stalls.md and
+	-- .planning/phases/02-closed-beta-social-systems-content/02-CONTEXT.md (D-12).
+	-- C->S
+	CreateListing             = "CreateListing",
+	CancelListing             = "CancelListing",
+	BuyListing                = "BuyListing",
+	RentFeaturedSlot          = "RentFeaturedSlot",
+	ClaimMailbox              = "ClaimMailbox",
+	BrowseDirectory           = "BrowseDirectory",
+	-- S->C
+	OpenStallOwnerUI          = "OpenStallOwnerUI",
+	OpenStallBuyerUI          = "OpenStallBuyerUI",
+	StallTransactionCompleted = "StallTransactionCompleted",
+	MailboxUpdated            = "MailboxUpdated",
 	Brew = "Brew",
 	BrewCompleted = "BrewCompleted",
 	ConsumePotion = "ConsumePotion",

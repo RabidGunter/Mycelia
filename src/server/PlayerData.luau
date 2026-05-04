@@ -91,6 +91,21 @@ local function defaultData()
 		activeQuests = {},          -- [questId] = { acceptedAt, progress }
 		gamepassesOwned = {},       -- [gamePassId] = { ownedSince }
 
+		-- Player Stalls (Phase 2). Additive to v3 schema; assigned lazily on
+		-- first stall interaction (PlotAnchors.assign writes plotAnchorId).
+		-- See docs/specs/player-stalls.md (D-13).
+		stalls = {
+			plotAnchorId          = nil,
+			listings              = {},
+			mailbox = {
+				coins          = 0,
+				items          = {},
+				sales          = {},
+				overflowNotice = nil,
+			},
+			featuredRentExpiresAt = nil,
+		},
+
 		settings = {
 			masterVolume       = 1.0,
 			musicVolume        = 0.7,
@@ -190,6 +205,22 @@ local function migrate(data)
 
 		data.schemaVersion = 3
 	end
+
+	-- Additive backfill (no schema bump): Phase 2 added data.stalls. Safe to
+	-- re-run on any v3 profile; only writes when the field is missing.
+	-- ProfileService:Reconcile() also backfills against the template, so this
+	-- is belt-and-suspenders — explicit here for migration auditability.
+	data.stalls = data.stalls or {
+		plotAnchorId          = nil,
+		listings              = {},
+		mailbox = {
+			coins          = 0,
+			items          = {},
+			sales          = {},
+			overflowNotice = nil,
+		},
+		featuredRentExpiresAt = nil,
+	}
 
 	return data
 end

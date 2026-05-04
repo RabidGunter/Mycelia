@@ -13,7 +13,6 @@
 -- Spec: docs/specs/trading-post.md.
 -- Wire-level remotes: docs/specs/remote-api.md §281–381.
 
-local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,6 +23,7 @@ local Species = require(ReplicatedStorage.Shared.Species)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Inventory = require(ServerScriptService.Server.Inventory)
 local PlayerData = require(ServerScriptService.Server.PlayerData)
+local Exchange = require(ServerScriptService.Server.Exchange)
 
 local Trade = {}
 
@@ -49,12 +49,6 @@ local lastRequestAt: { [number]: number } = {}
 
 -- Pending requests waiting for the target's Accept/Decline. [sessionId] = expiry.
 local pendingExpiry: { [string]: number } = {}
-
-local auditStore = nil
-do
-	local ok, store = pcall(DataStoreService.GetDataStore, DataStoreService, "MyceliaAuditLog_v1")
-	if ok then auditStore = store end
-end
 
 -- ---------- Pure helpers ---------------------------------------------------
 
@@ -105,39 +99,11 @@ end
 
 -- Pure mutation: subtract `give` from data, add `receive` to data. Returns
 -- nothing; mutates in place. Caller wraps in PlayerData.update.
+--
+-- Refactored 2026-05-03 to delegate to Exchange.applyOneSided per docs/specs/
+-- player-stalls.md §16 (D-02). Preserves public API for TradeSpec.
 function Trade.applyOffer(data, give, receive)
-	-- Subtract coins given, add coins received.
-	data.coins = (data.coins or 0) - (give.coins or 0) + (receive.coins or 0)
-
-	-- Subtract `give` items from their proper buckets.
-	for itemId, qty in pairs(give.items or {}) do
-		if Species.byId[itemId] then
-			Inventory.remove(data.inventory, itemId, qty)
-		else
-			local def = Constants.ITEMS[itemId]
-			if def and data.inventoryByCategory and data.inventoryByCategory[def.category] then
-				local bucket = data.inventoryByCategory[def.category]
-				bucket[itemId] = (bucket[itemId] or 0) - qty
-				if bucket[itemId] <= 0 then bucket[itemId] = nil end
-			end
-		end
-	end
-
-	-- Add `receive` items to their proper buckets.
-	for itemId, qty in pairs(receive.items or {}) do
-		if Species.byId[itemId] then
-			Inventory.add(data.inventory, itemId, qty)
-		else
-			local def = Constants.ITEMS[itemId]
-			if def then
-				local cat = def.category
-				data.inventoryByCategory = data.inventoryByCategory or {}
-				data.inventoryByCategory[cat] = data.inventoryByCategory[cat] or {}
-				local bucket = data.inventoryByCategory[cat]
-				bucket[itemId] = (bucket[itemId] or 0) + qty
-			end
-		end
-	end
+	Exchange.applyOneSided(data, give, receive)
 end
 
 -- Returns (ok, code). Pure check before allowing RequestTrade. `now` and
@@ -211,17 +177,17 @@ local function clearSession(session)
 end
 
 local function writeAudit(session, outcome, code)
-	if not auditStore then return end
 	local function offerSnapshot(side)
 		return {
 			coins = side.offer.coins or 0,
 			items = side.offer.items or {},
 		}
 	end
-	local entry = {
-		sessionId = session.sessionId,
-		timestamp = os.time(),
-		outcome = outcome,
+	-- kind = "trade" per Exchange's audit taxonomy (post-2026-05-03 refactor).
+	-- sessionId is what Exchange.writeAudit uses to derive the DataStore key.
+	Exchange.writeAudit(Exchange.buildAuditEntry("trade", {
+		sessionId    = session.sessionId,
+		outcome      = outcome,
 		cancelReason = code,
 		a = {
 			userId = session.a.player and session.a.player.UserId or 0,
@@ -235,11 +201,7 @@ local function writeAudit(session, outcome, code)
 			gave   = offerSnapshot(session.b),
 			got    = offerSnapshot(session.a),
 		},
-	}
-	local key = "trade_" .. session.sessionId
-	pcall(function()
-		auditStore:SetAsync(key, entry)
-	end)
+	}))
 end
 
 local function fireCompleted(session, success, code)
@@ -263,36 +225,22 @@ local function endSession(session, outcome: string, code: string)
 end
 
 -- ---------- Atomic execution ----------------------------------------------
+--
+-- Refactored 2026-05-03 to use Exchange.snapshotData / Exchange.restoreFromSnapshot
+-- per docs/specs/player-stalls.md §16 (D-02). Roblox-bound PlayerData.update
+-- wrapping stays here at the call site; Exchange's helpers operate on plain
+-- `data` tables.
 
-local function snapshotData(player: Player)
-	-- Capture a defensive copy of the relevant subset of player data so we
-	-- can roll back if the second-side mutation fails.
+local function snapshotPlayer(player: Player)
 	local data = PlayerData.get(player)
 	if not data then return nil end
-	local snap = {
-		coins = data.coins,
-		inventory = {},
-		inventoryByCategory = {},
-	}
-	for k, v in pairs(data.inventory or {}) do snap.inventory[k] = v end
-	for cat, bucket in pairs(data.inventoryByCategory or {}) do
-		snap.inventoryByCategory[cat] = {}
-		for k, v in pairs(bucket) do snap.inventoryByCategory[cat][k] = v end
-	end
-	return snap
+	return Exchange.snapshotData(data)
 end
 
-local function restoreFromSnapshot(player: Player, snap)
+local function restorePlayer(player: Player, snap)
 	if not snap then return end
 	PlayerData.update(player, function(d)
-		d.coins = snap.coins
-		d.inventory = {}
-		for k, v in pairs(snap.inventory) do d.inventory[k] = v end
-		d.inventoryByCategory = d.inventoryByCategory or {}
-		for cat, bucket in pairs(snap.inventoryByCategory) do
-			d.inventoryByCategory[cat] = {}
-			for k, v in pairs(bucket) do d.inventoryByCategory[cat][k] = v end
-		end
+		Exchange.restoreFromSnapshot(d, snap)
 	end)
 end
 
@@ -312,29 +260,29 @@ local function executeAtomic(session): (boolean, string)
 	local okB, codeB = Trade.validateOffer(session.b.offer, dataB)
 	if not okB then return false, codeB end
 
-	local snapA = snapshotData(pa)
-	local snapB = snapshotData(pb)
+	local snapA = snapshotPlayer(pa)
+	local snapB = snapshotPlayer(pb)
 
 	-- Mutate A: gives offerA, receives offerB.
 	local okMutA = pcall(function()
 		PlayerData.update(pa, function(d)
-			Trade.applyOffer(d, session.a.offer, session.b.offer)
+			Exchange.applyOneSided(d, session.a.offer, session.b.offer)
 		end)
 	end)
 	if not okMutA then
-		restoreFromSnapshot(pa, snapA)
+		restorePlayer(pa, snapA)
 		return false, "MUTATION_FAILED"
 	end
 
 	-- Mutate B: gives offerB, receives offerA. If this fails, roll back A.
 	local okMutB = pcall(function()
 		PlayerData.update(pb, function(d)
-			Trade.applyOffer(d, session.b.offer, session.a.offer)
+			Exchange.applyOneSided(d, session.b.offer, session.a.offer)
 		end)
 	end)
 	if not okMutB then
-		restoreFromSnapshot(pa, snapA)
-		restoreFromSnapshot(pb, snapB)
+		restorePlayer(pa, snapA)
+		restorePlayer(pb, snapB)
 		return false, "MUTATION_FAILED"
 	end
 
